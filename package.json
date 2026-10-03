@@ -1,0 +1,57 @@
+{
+  "name": "array-of-sunshine-support",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI customer-support widget and owner dashboard (local demo + Amplify Gen 2 backend prep) for the Array of Sunshine project.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "typecheck": "tsc -b",
+    "typecheck:amplify": "tsc -p amplify/tsconfig.json --noEmit",
+    "test": "vitest run",
+    "smoke": "node scripts/smoke.mjs",
+    "check": "npm run typecheck && npm run typecheck:amplify && npm run test && vite build"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.25.1",
+    "@aws-amplify/backend-cli": "^1.10.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1146.0",
+    "@aws-sdk/client-dynamodb": "^3.1146.0",
+    "@aws-sdk/client-s3": "^3.1146.0",
+    "@aws-sdk/lib-dynamodb": "^3.1146.0",
+    "@aws-sdk/s3-request-presigner": "^3.1146.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/aws-lambda": "^8.10.164",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "aws-cdk-lib": "^2.272.0",
+    "constructs": "^10.8.1",
+    "esbuild": "^0.28.2",
+    "playwright-core": "^1.63.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  },
+  "overrides": {
+    "@graphql-codegen/plugin-helpers": {
+      "lodash": "4.18.1"
+    },
+    "@ardatan/relay-compiler@12.0.0": {
+      "immutable": "3.8.4"
+    },
+    "@aws-amplify/graphql-schema-generator": {
+      "mysql2": "3.24.5"
+    }
+  }
+}
