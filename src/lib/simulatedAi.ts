@@ -1,4 +1,4 @@
-import type { KnowledgeItem } from '../../shared/knowledge';
+import type { KnowledgeEntry } from '../../shared/knowledge';
 import { handoffMessage } from '../../shared/prompt';
 import { detectIntent, retrieveApproved } from '../../shared/retrieval';
 import type { MessageOutcome } from './types';
@@ -19,7 +19,7 @@ export interface SimulatedReply {
 
 export function generateSimulatedReply(
   businessName: string,
-  items: readonly KnowledgeItem[],
+  items: readonly KnowledgeEntry[],
   visitorText: string,
 ): SimulatedReply {
   const intent = detectIntent(visitorText);

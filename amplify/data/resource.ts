@@ -36,10 +36,23 @@ const schema = a.schema({
     id: a.id().required(),
     visitorLabel: a.string().required(),
     status: a.string().required(),
-    preview: a.string(),
+    pageUrl: a.string(),
+    firstQuestion: a.string(),
     messageCount: a.integer(),
+    visitorMessageCount: a.integer(),
+    answeredCount: a.integer(),
+    handoffOfferedCount: a.integer(),
     startedAt: a.datetime().required(),
     updatedAt: a.datetime().required(),
+  }),
+  DashboardStats: a.customType({
+    conversationsTotal: a.integer().required(),
+    conversationsLast7Days: a.integer().required(),
+    answeredReplies: a.integer().required(),
+    ratedReplies: a.integer().required(),
+    newInquiries: a.integer().required(),
+    openUnanswered: a.integer().required(),
+    approvedAnswers: a.integer().required(),
   }),
   ConversationPage: a.customType({
     items: a.ref('ConversationSummary').array(),
@@ -88,6 +101,7 @@ const schema = a.schema({
   }),
 
   getMyBusiness: a.query().returns(a.ref('BusinessProfile')).authorization((allow) => [allow.authenticated()]).handler(handler),
+  getDashboardStats: a.query().returns(a.ref('DashboardStats')).authorization((allow) => [allow.authenticated()]).handler(handler),
   updateBusinessProfile: a
     .mutation()
     .arguments({

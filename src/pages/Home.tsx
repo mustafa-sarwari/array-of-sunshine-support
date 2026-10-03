@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
-import { SimulatedBadge } from '../components/ui';
-import { resetDemoData, useDb } from '../lib/db';
+import { useBackend } from '../backend/context';
+import { Badge, SimulatedBadge } from '../components/ui';
 
 export default function Home() {
-  const db = useDb();
+  const backend = useBackend();
+  const businesses = backend.useDemoBusinesses();
+  const local = backend.mode === 'local';
 
   return (
     <div className="min-h-dvh bg-gradient-to-b from-amber-50 via-white to-white">
@@ -20,17 +22,26 @@ export default function Home() {
       <main className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
         <section className="py-10 sm:py-16">
           <div className="flex flex-wrap gap-2">
-            <SimulatedBadge>Simulated sign-in</SimulatedBadge>
-            <SimulatedBadge>Simulated AI</SimulatedBadge>
-            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-slate-200">
-              Data stored in this browser only
-            </span>
+            {local ? (
+              <>
+                <SimulatedBadge>Simulated sign-in</SimulatedBadge>
+                <SimulatedBadge>Simulated AI</SimulatedBadge>
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-slate-200">
+                  Data stored in this browser only
+                </span>
+              </>
+            ) : (
+              <>
+                <Badge tone="green">Amazon Cognito sign-in</Badge>
+                <Badge tone="indigo">Amazon Bedrock replies</Badge>
+              </>
+            )}
           </div>
           <h1 className="mt-4 max-w-3xl font-display text-4xl leading-tight text-slate-900 sm:text-5xl">
             An AI support assistant that only answers from what the owner approved.
           </h1>
           <p className="mt-4 max-w-2xl text-base text-slate-600 sm:text-lg">
-            This is a local demo. Business owners manage approved FAQs and service details. Visitors chat through a
+            {local && 'This is a local demo. '}Business owners manage approved FAQs and service details. Visitors chat through a
             floating widget. Anything the assistant can&apos;t answer from approved information goes to a human.
           </p>
         </section>
@@ -40,12 +51,14 @@ export default function Home() {
             <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">For owners</p>
             <h2 className="mt-2 text-lg font-semibold text-slate-900">Owner dashboard</h2>
             <p className="mt-2 text-sm text-slate-600">
-              Demo sign-in, approved answers, conversations, customer inquiries, and the unanswered-question inbox.
+              {local ? 'Demo sign-in, approved' : 'Approved'} answers, conversations, customer inquiries, and the unanswered-question inbox.
             </p>
-            <span className="mt-4 inline-block text-sm font-medium text-indigo-600 group-hover:underline">Sign in to the demo →</span>
+            <span className="mt-4 inline-block text-sm font-medium text-indigo-600 group-hover:underline">
+              {local ? 'Sign in to the demo →' : 'Sign in →'}
+            </span>
           </Link>
 
-          {db.businesses.map((b) => (
+          {businesses.map((b) => (
             <Link
               key={b.id}
               to={`/demo/${b.slug}`}
@@ -89,15 +102,17 @@ export default function Home() {
               <li>Sign in as each owner. Each dashboard only shows its own business&apos;s answers, chats, and inquiries.</li>
               <li>Draft entries (like the bakery&apos;s holiday pies) are never used by the widget until approved.</li>
             </ul>
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm('Reset all demo data in this browser to the original sample data?')) resetDemoData();
-              }}
-              className="mt-4 text-sm font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
-            >
-              Reset demo data
-            </button>
+            {backend.resetDemoData && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Reset all demo data in this browser to the original sample data?')) backend.resetDemoData?.();
+                }}
+                className="mt-4 text-sm font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
+              >
+                Reset demo data
+              </button>
+            )}
           </div>
         </section>
       </main>

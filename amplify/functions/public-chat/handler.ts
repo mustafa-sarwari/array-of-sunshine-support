@@ -28,7 +28,7 @@ declare const awslambda: {
   };
 };
 
-const bedrock = new BedrockRuntimeClient({});
+const bedrock = new BedrockRuntimeClient({ region: process.env.BEDROCK_REGION || undefined });
 const MODEL_ID = process.env.MODEL_ID ?? 'amazon.nova-lite-v1:0';
 const MAX_OUTPUT_TOKENS = Number(process.env.MAX_OUTPUT_TOKENS ?? 400);
 const RETENTION_DAYS = Number(process.env.CONVERSATION_RETENTION_DAYS ?? 180);
@@ -45,6 +45,7 @@ interface Body {
   conversationId?: string;
   visitorToken?: string;
   text?: string;
+  pageUrl?: string;
   handoff?: { name?: string; email?: string; phone?: string; message?: string };
 }
 
@@ -127,6 +128,10 @@ async function approvedKnowledge(businessId: string): Promise<KnowledgeItem[]> {
   return (res.Items ?? []) as KnowledgeItem[];
 }
 
+/**
+ * Stores a message and keeps the conversation summary's counters current, so the
+ * owner dashboard can list and filter conversations without reading every message.
+ */
 async function putMessage(
   businessId: string,
   conversationId: string,
@@ -140,12 +145,25 @@ async function putMessage(
       Item: { PK: keys.messagesPk(businessId, conversationId), SK: `MSG#${createdAt}#${id}`, id, createdAt, ttl: ttlFromNow(RETENTION_DAYS), ...msg },
     }),
   );
+
+  const set = ['updatedAt = :u', 'GSI1SK = :u'];
+  const add = ['messageCount :one'];
+  const values: Record<string, unknown> = { ':u': createdAt, ':one': 1 };
+  if (msg.role === 'visitor') {
+    set.push('firstQuestion = if_not_exists(firstQuestion, :fq)');
+    values[':fq'] = msg.text.slice(0, 200);
+    add.push('visitorMessageCount :one');
+  } else if (msg.outcome === 'answered') {
+    add.push('answeredCount :one');
+  } else if (msg.outcome === 'handoff_offered') {
+    add.push('handoffOfferedCount :one');
+  }
   await ddb.send(
     new UpdateCommand({
       TableName: TABLE_NAME,
       Key: keys.conversation(businessId, conversationId),
-      UpdateExpression: 'SET updatedAt = :u, GSI1SK = :u ADD messageCount :one',
-      ExpressionAttributeValues: { ':u': createdAt, ':one': 1 },
+      UpdateExpression: `SET ${set.join(', ')} ADD ${add.join(', ')}`,
+      ExpressionAttributeValues: values,
     }),
   );
 }
@@ -307,7 +325,11 @@ export const handler = awslambda.streamifyResponse(async (event, stream) => {
               visitorTokenHash: hashToken(visitorToken),
               visitorLabel: `Visitor ${conversationId.slice(-4).toUpperCase()}`,
               status: 'active',
+              pageUrl: clean(body.pageUrl, 300) || undefined,
               messageCount: 0,
+              visitorMessageCount: 0,
+              answeredCount: 0,
+              handoffOfferedCount: 0,
               startedAt: now,
               updatedAt: now,
               ttl: ttlFromNow(RETENTION_DAYS),

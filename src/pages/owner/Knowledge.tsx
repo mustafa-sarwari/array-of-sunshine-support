@@ -1,23 +1,29 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Badge, Button, Card, EmptyState, Field, Modal, PageHeader, SimulatedBadge, inputClass } from '../../components/ui';
-import { useDb } from '../../lib/db';
+import type { KnowledgeEntry } from '../../../shared/knowledge';
+import { useBackend } from '../../backend/context';
+import { useKnowledgeQuery, useOwnerMutation } from '../../backend/ownerQueries';
+import { Badge, Button, Card, EmptyState, ErrorNote, Field, Modal, PageHeader, QueryState, SimulatedBadge, inputClass } from '../../components/ui';
 import { timeAgo } from '../../lib/format';
-import { deleteKnowledge, listKnowledge, saveKnowledge, validateKnowledge, type KnowledgeInput } from '../../lib/ownerApi';
 import { generateSimulatedReply } from '../../lib/simulatedAi';
-import type { KnowledgeItem, KnowledgeKind, KnowledgeStatus } from '../../lib/types';
+import type { KnowledgeKind, KnowledgeStatus } from '../../lib/types';
+import { validateKnowledge, type KnowledgeInput } from '../../lib/validation';
 import { useOwner } from './OwnerLayout';
 
 type KindFilter = 'all' | KnowledgeKind;
 type StatusFilter = 'all' | KnowledgeStatus;
 
 const emptyInput: KnowledgeInput = { kind: 'faq', question: '', answer: '', keywords: [], status: 'approved' };
+const NO_ITEMS: KnowledgeEntry[] = [];
 
 export default function Knowledge() {
-  const db = useDb();
-  const { session, business } = useOwner();
+  const backend = useBackend();
+  const { business } = useOwner();
   const [params, setParams] = useSearchParams();
-  const items = listKnowledge(session, db);
+  const knowledgeQuery = useKnowledgeQuery();
+  const items = knowledgeQuery.data ?? NO_ITEMS;
+  const save = useOwnerMutation((d, a: { input: KnowledgeInput; id?: string; resolves?: string }) => d.saveKnowledge(a.input, a.id, a.resolves));
+  const remove = useOwnerMutation((d, id: string) => d.deleteKnowledge(id));
 
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<KindFilter>('all');
@@ -56,7 +62,7 @@ export default function Knowledge() {
     setErrors([]);
   }
 
-  function openEdit(item: KnowledgeItem) {
+  function openEdit(item: KnowledgeEntry) {
     setEditing({
       id: item.id,
       input: { kind: item.kind, question: item.question, answer: item.answer, keywords: item.keywords, status: item.status },
@@ -65,15 +71,15 @@ export default function Knowledge() {
     setErrors([]);
   }
 
-  function onSave(e?: FormEvent) {
+  async function onSave(e?: FormEvent) {
     e?.preventDefault();
-    if (!editing) return;
+    if (!editing || save.isPending) return;
     const input = { ...editing.input, keywords: editing.keywordsText.split(',') };
     const v = validateKnowledge(input);
     setErrors(v);
     if (v.length) return;
     try {
-      saveKnowledge(session, input, editing.id, editing.resolves);
+      await save.mutateAsync({ input, id: editing.id, resolves: editing.resolves });
       setNotice(editing.id ? 'Entry updated.' : editing.resolves ? 'Answer added and question marked resolved.' : 'Entry added.');
       setEditing(null);
     } catch (err) {
@@ -81,10 +87,14 @@ export default function Knowledge() {
     }
   }
 
-  function onDelete(item: KnowledgeItem) {
+  async function onDelete(item: KnowledgeEntry) {
     if (!confirm(`Delete "${item.question}"? The assistant will stop using it immediately.`)) return;
-    deleteKnowledge(session, item.id);
-    setNotice('Entry deleted.');
+    try {
+      await remove.mutateAsync(item.id);
+      setNotice('Entry deleted.');
+    } catch {
+      // Shown by the ErrorNote bound to remove.error.
+    }
   }
 
   const set = (patch: Partial<KnowledgeInput>) => editing && setEditing({ ...editing, input: { ...editing.input, ...patch } });
@@ -106,6 +116,8 @@ export default function Knowledge() {
           </button>
         </div>
       )}
+
+      <ErrorNote error={remove.error} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0">
@@ -131,55 +143,57 @@ export default function Knowledge() {
             </div>
           </div>
 
-          {filtered.length === 0 ? (
-            <EmptyState title={items.length ? 'No entries match your filters.' : 'No approved answers yet.'}>
-              {!items.length && 'Add your first FAQ so the assistant has something to answer from.'}
-            </EmptyState>
-          ) : (
-            <ul className="space-y-3">
-              {filtered.map((item) => (
-                <li key={item.id}>
-                  <Card className="p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <Badge tone={item.status === 'approved' ? 'green' : 'amber'}>{item.status === 'approved' ? 'Approved' : 'Draft'}</Badge>
-                          <Badge tone={item.kind === 'faq' ? 'indigo' : 'sky'}>{item.kind === 'faq' ? 'FAQ' : 'Service info'}</Badge>
-                          <span className="text-xs text-slate-500">Updated {timeAgo(item.updatedAt)}</span>
+          <QueryState query={knowledgeQuery}>
+            {filtered.length === 0 ? (
+              <EmptyState title={items.length ? 'No entries match your filters.' : 'No approved answers yet.'}>
+                {!items.length && 'Add your first FAQ so the assistant has something to answer from.'}
+              </EmptyState>
+            ) : (
+              <ul className="space-y-3">
+                {filtered.map((item) => (
+                  <li key={item.id}>
+                    <Card className="p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge tone={item.status === 'approved' ? 'green' : 'amber'}>{item.status === 'approved' ? 'Approved' : 'Draft'}</Badge>
+                            <Badge tone={item.kind === 'faq' ? 'indigo' : 'sky'}>{item.kind === 'faq' ? 'FAQ' : 'Service info'}</Badge>
+                            <span className="text-xs text-slate-500">Updated {timeAgo(item.updatedAt)}</span>
+                          </div>
+                          <h3 className="mt-2 text-sm font-semibold text-slate-900">{item.question}</h3>
+                          <p className="mt-1 line-clamp-3 text-sm text-slate-600">{item.answer}</p>
+                          {item.keywords.length > 0 && (
+                            <p className="mt-2 flex flex-wrap gap-1">
+                              {item.keywords.map((kw) => (
+                                <span key={kw} className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">
+                                  {kw}
+                                </span>
+                              ))}
+                            </p>
+                          )}
                         </div>
-                        <h3 className="mt-2 text-sm font-semibold text-slate-900">{item.question}</h3>
-                        <p className="mt-1 line-clamp-3 text-sm text-slate-600">{item.answer}</p>
-                        {item.keywords.length > 0 && (
-                          <p className="mt-2 flex flex-wrap gap-1">
-                            {item.keywords.map((kw) => (
-                              <span key={kw} className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">
-                                {kw}
-                              </span>
-                            ))}
-                          </p>
-                        )}
+                        <div className="flex shrink-0 gap-2">
+                          <Button variant="secondary" size="sm" onClick={() => openEdit(item)}>
+                            Edit
+                          </Button>
+                          <Button variant="danger" size="sm" onClick={() => onDelete(item)}>
+                            Delete
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex shrink-0 gap-2">
-                        <Button variant="secondary" size="sm" onClick={() => openEdit(item)}>
-                          Edit
-                        </Button>
-                        <Button variant="danger" size="sm" onClick={() => onDelete(item)}>
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                </li>
-              ))}
-            </ul>
-          )}
+                    </Card>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </QueryState>
         </div>
 
         <aside className="xl:sticky xl:top-8 xl:self-start">
           <Card className="p-4">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-slate-900">Test the assistant</h2>
-              <SimulatedBadge />
+              {backend.chat.simulated ? <SimulatedBadge /> : <Badge>Retrieval preview</Badge>}
             </div>
             <p className="mt-1 text-xs text-slate-600">Type a customer question to see which approved answer would be used.</p>
             <input
@@ -194,7 +208,11 @@ export default function Knowledge() {
                 {testResult.outcome === 'answered' ? (
                   <>
                     <p className="text-xs font-semibold text-emerald-700">Would answer from: {testResult.sourceIds.map(titleOf).join(', ')}</p>
-                    <p className="mt-1 whitespace-pre-line text-slate-700">{testResult.text}</p>
+                    {backend.chat.simulated ? (
+                      <p className="mt-1 whitespace-pre-line text-slate-700">{testResult.text}</p>
+                    ) : (
+                      <p className="mt-1 text-xs text-slate-600">The live assistant writes its reply with Amazon Bedrock using only these entries.</p>
+                    )}
                   </>
                 ) : testResult.unanswered ? (
                   <p className="text-xs font-semibold text-amber-700">No approved answer matches. The visitor would be offered a handoff, and the question would go to your Unanswered inbox.</p>
@@ -216,7 +234,9 @@ export default function Knowledge() {
             <Button variant="secondary" onClick={() => setEditing(null)}>
               Cancel
             </Button>
-            <Button onClick={() => onSave()}>Save</Button>
+            <Button onClick={() => void onSave()} disabled={save.isPending}>
+              {save.isPending ? 'Saving…' : 'Save'}
+            </Button>
           </>
         }
       >

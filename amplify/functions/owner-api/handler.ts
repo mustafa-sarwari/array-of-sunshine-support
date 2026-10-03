@@ -101,6 +101,38 @@ const operations: Record<string, (businessId: string, args: Args) => Promise<unk
     return stripKeys(res.Item);
   },
 
+  async getDashboardStats(businessId) {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const stats = { conversationsTotal: 0, conversationsLast7Days: 0, answeredReplies: 0, ratedReplies: 0, newInquiries: 0, openUnanswered: 0, approvedAnswers: 0 };
+    let ExclusiveStartKey: Record<string, unknown> | undefined;
+    do {
+      const res = await ddb.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk',
+          ProjectionExpression: 'SK, #s, updatedAt, answeredCount, handoffOfferedCount',
+          ExpressionAttributeNames: { '#s': 'status' },
+          ExpressionAttributeValues: { ':pk': keys.business(businessId) },
+          ExclusiveStartKey,
+        }),
+      );
+      for (const item of res.Items ?? []) {
+        const sk = String(item.SK);
+        if (sk.startsWith('CONV#')) {
+          const answered = Number(item.answeredCount ?? 0);
+          stats.conversationsTotal += 1;
+          if (String(item.updatedAt ?? '') >= weekAgo) stats.conversationsLast7Days += 1;
+          stats.answeredReplies += answered;
+          stats.ratedReplies += answered + Number(item.handoffOfferedCount ?? 0);
+        } else if (sk.startsWith('INQ#') && item.status === 'new') stats.newInquiries += 1;
+        else if (sk.startsWith('UNQ#') && item.status === 'open') stats.openUnanswered += 1;
+        else if (sk.startsWith('KB#') && item.status === 'approved') stats.approvedAnswers += 1;
+      }
+      ExclusiveStartKey = res.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+    return stats;
+  },
+
   async updateBusinessProfile(businessId, args) {
     const brandColor = str(args, 'brandColor', 7, false);
     const res = await ddb.send(

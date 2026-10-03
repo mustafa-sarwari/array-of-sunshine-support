@@ -7,14 +7,19 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:widget": "vite build --config vite.widget.config.ts",
+    "size:widget": "node scripts/check-widget-size.mjs",
     "preview": "vite preview --port 4173 --strictPort",
     "typecheck": "tsc -b",
     "typecheck:amplify": "tsc -p amplify/tsconfig.json --noEmit",
     "test": "vitest run",
     "smoke": "node scripts/smoke.mjs",
-    "check": "npm run typecheck && npm run typecheck:amplify && npm run test && vite build"
+    "check": "npm run typecheck && npm run typecheck:amplify && npm run test && vite build && npm run build:widget && npm run size:widget"
   },
   "dependencies": {
+    "@aws-amplify/ui-react": "^6.15.7",
+    "@tanstack/react-query": "^5.104.1",
+    "aws-amplify": "^6.22.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4"
@@ -37,6 +42,7 @@
     "constructs": "^10.8.1",
     "esbuild": "^0.28.2",
     "playwright-core": "^1.63.0",
+    "preact": "^11.0.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",

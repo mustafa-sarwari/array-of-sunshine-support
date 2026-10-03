@@ -2,7 +2,12 @@ import { getDb, updateDb } from './db';
 import { newId, newSecret } from './ids';
 import { generateSimulatedReply, streamWords } from './simulatedAi';
 import { normalizeText } from '../../shared/retrieval';
-import type { ChatMessage, MessageOutcome } from './types';
+import { PublicApiError, type PublicWidgetConfig, type StreamEvent, type VisitorConversation } from './chatTypes';
+import type { ChatMessage } from './types';
+import { MAX_VISITOR_MESSAGE_LENGTH, validateHandoff, type HandoffInput } from './validation';
+
+export { MAX_VISITOR_MESSAGE_LENGTH, PublicApiError, validateHandoff };
+export type { HandoffInput, PublicWidgetConfig, StreamEvent, VisitorConversation };
 
 /**
  * Public widget API for the local demo. Mirrors amplify/functions/public-chat.
@@ -11,26 +16,6 @@ import type { ChatMessage, MessageOutcome } from './types';
  * visitors' messages, or see drafts, inquiries, or documents.
  */
 
-export interface PublicWidgetConfig {
-  widgetKey: string;
-  businessName: string;
-  greeting: string;
-  brandColor: string;
-  suggestedQuestions: string[];
-}
-
-export interface VisitorConversation {
-  conversationId: string;
-  visitorToken: string;
-}
-
-export type StreamEvent =
-  | { type: 'delta'; text: string }
-  | { type: 'done'; outcome: MessageOutcome; sources: { id: string; title: string }[] };
-
-export class PublicApiError extends Error {}
-
-export const MAX_VISITOR_MESSAGE_LENGTH = 500;
 const MAX_MESSAGES_PER_CONVERSATION = 40;
 
 function businessForKey(widgetKey: string) {
@@ -161,21 +146,6 @@ export async function* sendVisitorMessage(
     outcome: reply.outcome,
     sources: reply.sourceIds.map((id) => ({ id, title: items.find((k) => k.id === id)?.question ?? 'Approved answer' })),
   };
-}
-
-export interface HandoffInput {
-  name: string;
-  email: string;
-  phone?: string;
-  message: string;
-}
-
-export function validateHandoff(input: HandoffInput): string[] {
-  const errors: string[] = [];
-  if (input.name.trim().length < 2) errors.push('Please add your name.');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) errors.push('Please add a valid email address.');
-  if (input.message.trim().length < 3) errors.push('Please add a short message.');
-  return errors;
 }
 
 export function submitHandoff(widgetKey: string, ref: VisitorConversation, input: HandoffInput): void {

@@ -1,0 +1,29 @@
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - npm ci --cache .npm --prefer-offline
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+frontend:
+  phases:
+    build:
+      commands:
+        - VITE_BACKEND=aws npm run build
+        - npm run build:widget
+        - npm run size:widget
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - .npm/**/*
+      - node_modules/**/*
+  customHeaders:
+    - pattern: '/widget.js'
+      headers:
+        - key: Cache-Control
+          value: 'public, max-age=300, stale-while-revalidate=86400'
+        - key: Access-Control-Allow-Origin
+          value: '*'

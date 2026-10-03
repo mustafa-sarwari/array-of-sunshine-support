@@ -173,8 +173,8 @@ function iso(now: number, offset: number): string {
   return new Date(now - offset).toISOString();
 }
 
-export function buildSeed(now: number = Date.now()): DemoDatabase {
-  const businesses: Business[] = [
+/** Sample businesses. The AWS build also uses these for the demo websites' static content. */
+export const SEED_BUSINESSES: readonly Business[] = [
     {
       id: MAPLE_ID,
       slug: 'maple-street-bakery',
@@ -203,7 +203,10 @@ export function buildSeed(now: number = Date.now()): DemoDatabase {
       widgetKey: 'pk_demo_harbor_93be41',
       allowedOrigins: ['http://localhost:5173', 'http://localhost:4173', 'https://www.harborbikes.example'],
     },
-  ];
+];
+
+export function buildSeed(now: number = Date.now()): DemoDatabase {
+  const businesses: Business[] = structuredClone(SEED_BUSINESSES) as Business[];
 
   const conversations: Conversation[] = [
     {

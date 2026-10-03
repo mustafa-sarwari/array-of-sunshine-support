@@ -178,6 +178,39 @@ export function Modal({
   );
 }
 
+/** Loading and error states for a dashboard query. Renders children only once data is available. */
+export function QueryState({
+  query,
+  children,
+}: {
+  query: { isPending: boolean; isError: boolean; error: unknown; refetch: () => unknown };
+  children: ReactNode;
+}) {
+  if (query.isPending) {
+    return (
+      <p className="px-1 py-6 text-sm text-slate-500" role="status">
+        Loading…
+      </p>
+    );
+  }
+  if (query.isError) return <ErrorNote error={query.error} onRetry={() => void query.refetch()} />;
+  return <>{children}</>;
+}
+
+export function ErrorNote({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  if (!error) return null;
+  return (
+    <div role="alert" className="mb-4 flex items-center justify-between gap-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-800 ring-1 ring-red-200">
+      <span>{error instanceof Error ? error.message : 'Something went wrong.'}</span>
+      {onRetry && (
+        <button type="button" className="shrink-0 text-xs font-medium underline" onClick={onRetry}>
+          Try again
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function StatCard({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
   return (
     <Card className="p-4">

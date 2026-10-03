@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Widget embed test</title>
+    <style>
+      /* Deliberately hostile host-page styles: the widget's shadow DOM should ignore them. */
+      html { font-size: 10px; }
+      body { font: 1.6rem/1.4 Georgia, serif; color: #7c2d12; margin: 4rem; }
+      button, input, textarea { all: unset; }
+      p { color: red !important; }
+    </style>
+  </head>
+  <body>
+    <h1>Widget embed test</h1>
+    <p>This page loads <code>/widget.js</code> the same way a customer website would. Optional query parameters:
+      <code>?key=pk_...</code> for the widget key and <code>&amp;api=https://...</code> for the public chat URL.</p>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const s = document.createElement('script');
+      s.src = '/widget.js';
+      s.async = true;
+      s.dataset.widgetKey = params.get('key') || 'pk_demo_maple_7c1f2a';
+      if (params.get('api')) s.dataset.apiUrl = params.get('api');
+      document.body.appendChild(s);
+    </script>
+  </body>
+</html>

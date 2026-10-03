@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Badge, Button, Card, EmptyState, PageHeader } from '../../components/ui';
-import { useDb } from '../../lib/db';
+import { useKnowledgeQuery, useOwnerMutation, useUnansweredQuery } from '../../backend/ownerQueries';
+import { Badge, Button, Card, EmptyState, ErrorNote, PageHeader, QueryState } from '../../components/ui';
 import { timeAgo } from '../../lib/format';
-import { listKnowledge, listUnanswered, setUnansweredStatus } from '../../lib/ownerApi';
 import type { UnansweredStatus } from '../../lib/types';
-import { useOwner } from './OwnerLayout';
 
 export default function Unanswered() {
-  const db = useDb();
-  const { session } = useOwner();
   const navigate = useNavigate();
   const [tab, setTab] = useState<UnansweredStatus>('open');
-  const all = listUnanswered(session, db);
-  const knowledge = listKnowledge(session, db);
+  const query = useUnansweredQuery();
+  const setStatus = useOwnerMutation((d, a: { id: string; status: UnansweredStatus }) => d.setUnansweredStatus(a.id, a.status));
+  const all = query.data ?? [];
+  const knowledge = useKnowledgeQuery().data ?? [];
   const items = all.filter((u) => u.status === tab);
   const counts = { open: 0, resolved: 0, dismissed: 0 };
   for (const u of all) counts[u.status]++;
@@ -42,57 +40,65 @@ export default function Unanswered() {
         ))}
       </div>
 
-      {items.length === 0 ? (
-        <EmptyState title={tab === 'open' ? 'Inbox zero!' : `No ${tab} questions.`}>
-          {tab === 'open' && 'Every question so far was answered from your approved information.'}
-        </EmptyState>
-      ) : (
-        <Card className="overflow-hidden">
-          <ul className="divide-y divide-slate-100">
-            {items.map((u) => {
-              const linked = u.resolvedKnowledgeId ? knowledge.find((k) => k.id === u.resolvedKnowledgeId) : undefined;
-              return (
-                <li key={u.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900">&ldquo;{u.question}&rdquo;</p>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      Asked {timeAgo(u.createdAt)} ·{' '}
-                      <Link to={`/owner/conversations/${u.conversationId}`} className="hover:underline">
-                        View conversation
-                      </Link>
-                      {linked && (
+      <ErrorNote error={setStatus.error} />
+      <QueryState query={query}>
+        {items.length === 0 ? (
+          <EmptyState title={tab === 'open' ? 'Inbox zero!' : `No ${tab} questions.`}>
+            {tab === 'open' && 'Every question so far was answered from your approved information.'}
+          </EmptyState>
+        ) : (
+          <Card className="overflow-hidden">
+            <ul className="divide-y divide-slate-100">
+              {items.map((u) => {
+                const linked = u.resolvedKnowledgeId ? knowledge.find((k) => k.id === u.resolvedKnowledgeId) : undefined;
+                return (
+                  <li key={u.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900">&ldquo;{u.question}&rdquo;</p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Asked {timeAgo(u.createdAt)}
+                        {u.conversationId && (
+                          <>
+                            {' · '}
+                            <Link to={`/owner/conversations/${u.conversationId}`} className="hover:underline">
+                              View conversation
+                            </Link>
+                          </>
+                        )}
+                        {linked && (
+                          <>
+                            {' · '}
+                            <Badge tone="green">Answered by &ldquo;{linked.question}&rdquo;</Badge>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      {u.status === 'open' ? (
                         <>
-                          {' · '}
-                          <Badge tone="green">Answered by &ldquo;{linked.question}&rdquo;</Badge>
+                          <Button
+                            size="sm"
+                            onClick={() => navigate(`/owner/knowledge?question=${encodeURIComponent(u.question)}&unanswered=${encodeURIComponent(u.id)}`)}
+                          >
+                            Write approved answer
+                          </Button>
+                          <Button variant="secondary" size="sm" disabled={setStatus.isPending} onClick={() => setStatus.mutate({ id: u.id, status: 'dismissed' })}>
+                            Dismiss
+                          </Button>
                         </>
+                      ) : (
+                        <Button variant="ghost" size="sm" disabled={setStatus.isPending} onClick={() => setStatus.mutate({ id: u.id, status: 'open' })}>
+                          Move back to open
+                        </Button>
                       )}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    {u.status === 'open' ? (
-                      <>
-                        <Button
-                          size="sm"
-                          onClick={() => navigate(`/owner/knowledge?question=${encodeURIComponent(u.question)}&unanswered=${encodeURIComponent(u.id)}`)}
-                        >
-                          Write approved answer
-                        </Button>
-                        <Button variant="secondary" size="sm" onClick={() => setUnansweredStatus(session, u.id, 'dismissed')}>
-                          Dismiss
-                        </Button>
-                      </>
-                    ) : (
-                      <Button variant="ghost" size="sm" onClick={() => setUnansweredStatus(session, u.id, 'open')}>
-                        Move back to open
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
-      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        )}
+      </QueryState>
     </>
   );
 }

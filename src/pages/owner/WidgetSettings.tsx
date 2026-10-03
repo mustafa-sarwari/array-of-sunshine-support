@@ -1,26 +1,39 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Card, Field, PageHeader, buttonClasses, inputClass } from '../../components/ui';
-import { updateBusinessProfile, type BusinessProfileInput } from '../../lib/ownerApi';
+import { useBackend } from '../../backend/context';
+import { useOwnerMutation } from '../../backend/ownerQueries';
+import type { BusinessProfileInput, OwnerBusiness } from '../../backend/types';
+import { Button, Card, ErrorNote, Field, PageHeader, buttonClasses, inputClass } from '../../components/ui';
 import { useOwner } from './OwnerLayout';
 
+function profileOf(b: OwnerBusiness): BusinessProfileInput {
+  return { name: b.name, tagline: b.tagline, phone: b.phone, email: b.email, address: b.address, greeting: b.greeting, brandColor: b.brandColor };
+}
+
 export default function WidgetSettings() {
-  const { session, business } = useOwner();
-  const [form, setForm] = useState<BusinessProfileInput>(business);
+  const backend = useBackend();
+  const { business } = useOwner();
+  const [form, setForm] = useState<BusinessProfileInput>(() => profileOf(business));
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const save = useOwnerMutation((d, input: BusinessProfileInput) => d.updateBusinessProfile(input));
 
   // Reset only when the business changes, so unrelated data updates don't wipe in-progress edits.
-  useEffect(() => setForm(business), [business.id]);
+  useEffect(() => setForm(profileOf(business)), [business.widgetKey]);
 
-  const embed = `<script src="https://YOUR-AMPLIFY-DOMAIN/widget.js"
+  const scriptOrigin = backend.mode === 'aws' ? window.location.origin : 'https://YOUR-AMPLIFY-DOMAIN';
+  const embed = `<script src="${scriptOrigin}/widget.js"
         data-widget-key="${business.widgetKey}" async></script>`;
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    updateBusinessProfile(session, form);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      await save.mutateAsync(form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      // Shown by the ErrorNote bound to save.error.
+    }
   }
 
   async function copy() {
@@ -41,9 +54,11 @@ export default function WidgetSettings() {
         title="Widget & profile"
         description="How the chat widget looks and greets visitors. Hours, prices, and policies belong in Approved answers so the assistant can use them."
         actions={
-          <Link to={`/demo/${business.slug}`} target="_blank" rel="noreferrer" className={buttonClasses('secondary')}>
-            Preview widget ↗
-          </Link>
+          business.previewPath && (
+            <Link to={business.previewPath} target="_blank" rel="noreferrer" className={buttonClasses('secondary')}>
+              Preview widget ↗
+            </Link>
+          )
         }
       />
 
@@ -76,8 +91,11 @@ export default function WidgetSettings() {
               <Field label="Email">{(id) => <input id={id} type="email" className={inputClass} value={form.email} onChange={(e) => set({ email: e.target.value })} />}</Field>
               <Field label="Address">{(id) => <input id={id} className={inputClass} value={form.address} onChange={(e) => set({ address: e.target.value })} />}</Field>
             </div>
+            <ErrorNote error={save.error} />
             <div className="flex items-center gap-3">
-              <Button type="submit">Save changes</Button>
+              <Button type="submit" disabled={save.isPending}>
+                {save.isPending ? 'Saving…' : 'Save changes'}
+              </Button>
               {saved && (
                 <span className="text-sm text-emerald-700" role="status">
                   Saved
@@ -91,8 +109,8 @@ export default function WidgetSettings() {
           <Card className="p-5">
             <h2 className="text-sm font-semibold text-slate-900">Embed code</h2>
             <p className="mt-1 text-xs text-slate-600">
-              After the AWS deployment, paste this before <code>&lt;/body&gt;</code> on your website. The widget key is public. It only allows
-              chatting with your approved answers and never exposes conversations or documents.
+              {backend.mode === 'aws' ? 'Paste' : 'After the AWS deployment, paste'} this before <code>&lt;/body&gt;</code> on your website. The
+              widget key is public. It only allows chatting with your approved answers and never exposes conversations or documents.
             </p>
             <pre className="mt-3 overflow-x-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100">{embed}</pre>
             <Button variant="secondary" size="sm" className="mt-2" onClick={copy}>
@@ -101,7 +119,10 @@ export default function WidgetSettings() {
           </Card>
           <Card className="p-5">
             <h2 className="text-sm font-semibold text-slate-900">Allowed websites</h2>
-            <p className="mt-1 text-xs text-slate-600">The public chat endpoint rejects requests from other origins.</p>
+            <p className="mt-1 text-xs text-slate-600">
+              The public chat endpoint rejects requests from other origins.
+              {backend.mode === 'aws' && ' Ask your administrator to change this list.'}
+            </p>
             <ul className="mt-2 space-y-1 text-xs text-slate-700">
               {business.allowedOrigins.map((o) => (
                 <li key={o} className="truncate rounded bg-slate-100 px-2 py-1 font-mono">

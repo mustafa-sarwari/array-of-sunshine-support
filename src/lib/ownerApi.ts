@@ -9,11 +9,12 @@ import type {
   Inquiry,
   InquiryStatus,
   KnowledgeItem,
-  KnowledgeKind,
-  KnowledgeStatus,
   UnansweredQuestion,
   UnansweredStatus,
 } from './types';
+import { cleanKeywords, validateKnowledge, type KnowledgeInput } from './validation';
+
+export { validateKnowledge, type KnowledgeInput };
 
 /**
  * Owner-facing API for the local demo. Mirrors amplify/functions/owner-api:
@@ -71,22 +72,6 @@ export function listKnowledge(session: DemoSession | null, db: DemoDatabase = ge
   return db.knowledge.filter((k) => k.businessId === businessId).sort(byNewest);
 }
 
-export interface KnowledgeInput {
-  kind: KnowledgeKind;
-  question: string;
-  answer: string;
-  keywords: string[];
-  status: KnowledgeStatus;
-}
-
-export function validateKnowledge(input: KnowledgeInput): string[] {
-  const errors: string[] = [];
-  if (input.question.trim().length < 3) errors.push('Add a question or title (at least 3 characters).');
-  if (input.answer.trim().length < 10) errors.push('Add an approved answer (at least 10 characters).');
-  if (input.answer.length > 1500) errors.push('Keep answers under 1,500 characters.');
-  return errors;
-}
-
 export function saveKnowledge(
   session: DemoSession | null,
   input: KnowledgeInput,
@@ -103,7 +88,7 @@ export function saveKnowledge(
       kind: input.kind,
       question: input.question.trim(),
       answer: input.answer.trim(),
-      keywords: [...new Set(input.keywords.map((k) => k.trim().toLowerCase()).filter(Boolean))],
+      keywords: cleanKeywords(input.keywords),
       status: input.status,
       updatedAt: new Date().toISOString(),
     };

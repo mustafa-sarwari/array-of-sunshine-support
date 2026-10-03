@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useOutletContext } from 'react-router-dom';
+import { useBackend } from '../../backend/context';
+import { OwnerDataProvider, useBusinessQuery, useStatsQuery } from '../../backend/ownerQueries';
+import type { OwnerBusiness, OwnerIdentity } from '../../backend/types';
 import { Button, SimulatedBadge } from '../../components/ui';
-import { useDb } from '../../lib/db';
-import { demoSignOut, useDemoSession, type DemoSession } from '../../lib/demoAuth';
-import { getMyBusiness, listInquiries, listUnanswered } from '../../lib/ownerApi';
-import type { Business } from '../../lib/types';
 
 interface OwnerContext {
-  session: DemoSession;
-  business: Business;
+  identity: OwnerIdentity;
+  business: OwnerBusiness;
 }
 
 export function useOwner(): OwnerContext {
@@ -16,33 +15,52 @@ export function useOwner(): OwnerContext {
 }
 
 export default function OwnerLayout() {
-  const db = useDb();
-  const session = useDemoSession();
+  const session = useBackend().useOwnerSession();
+  if (session.status === 'loading') return <FullPage>Checking your sign-in…</FullPage>;
+  if (session.status === 'signedOut') return <Navigate to="/owner/sign-in" replace />;
+  return (
+    <OwnerDataProvider key={session.identity.id} identity={session.identity}>
+      <OwnerShell identity={session.identity} />
+    </OwnerDataProvider>
+  );
+}
+
+function FullPage({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid min-h-dvh place-items-center px-6 text-center text-sm text-slate-700" role="status">
+      <div>{children}</div>
+    </div>
+  );
+}
+
+function OwnerShell({ identity }: { identity: OwnerIdentity }) {
+  const backend = useBackend();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const businessQuery = useBusinessQuery();
+  const stats = useStatsQuery().data;
+  const signOut = () => void backend.signOut();
 
   useEffect(() => setMenuOpen(false), [location.pathname]);
 
-  if (!session) return <Navigate to="/owner/sign-in" replace />;
-
-  let business: Business;
-  try {
-    business = getMyBusiness(session, db);
-  } catch (e) {
+  if (businessQuery.isPending) return <FullPage>Loading your dashboard…</FullPage>;
+  if (businessQuery.isError) {
     return (
-      <div className="grid min-h-dvh place-items-center px-6 text-center">
-        <div>
-          <p className="text-sm text-slate-700">{e instanceof Error ? e.message : 'Access error.'}</p>
-          <Button className="mt-4" onClick={demoSignOut}>
-            Sign out
+      <FullPage>
+        <p>{businessQuery.error instanceof Error ? businessQuery.error.message : 'Access error.'}</p>
+        <div className="mt-4 flex justify-center gap-2">
+          <Button variant="secondary" onClick={() => void businessQuery.refetch()}>
+            Try again
           </Button>
+          <Button onClick={signOut}>Sign out</Button>
         </div>
-      </div>
+      </FullPage>
     );
   }
 
-  const newInquiries = listInquiries(session, db).filter((i) => i.status === 'new').length;
-  const openUnanswered = listUnanswered(session, db).filter((u) => u.status === 'open').length;
+  const business = businessQuery.data;
+  const newInquiries = stats?.newInquiries ?? 0;
+  const openUnanswered = stats?.openUnanswered ?? 0;
 
   const nav = [
     { to: '/owner', label: 'Overview', end: true },
@@ -78,14 +96,16 @@ export default function OwnerLayout() {
   const sidebarFooter = (
     <div className="space-y-3 border-t border-slate-200 pt-4">
       <div className="text-xs text-slate-600">
-        <p className="font-medium text-slate-900">{session.displayName}</p>
-        <p className="truncate">{session.email}</p>
+        <p className="font-medium text-slate-900">{identity.displayName}</p>
+        <p className="truncate">{identity.email}</p>
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        <SimulatedBadge>Demo sign-in</SimulatedBadge>
-        <SimulatedBadge>Simulated AI</SimulatedBadge>
-      </div>
-      <Button variant="secondary" size="sm" className="w-full" onClick={demoSignOut}>
+      {backend.mode === 'local' && (
+        <div className="flex flex-wrap gap-1.5">
+          <SimulatedBadge>Demo sign-in</SimulatedBadge>
+          <SimulatedBadge>Simulated AI</SimulatedBadge>
+        </div>
+      )}
+      <Button variant="secondary" size="sm" className="w-full" onClick={signOut}>
         Sign out
       </Button>
     </div>
@@ -121,13 +141,13 @@ export default function OwnerLayout() {
       )}
 
       <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
-        <Outlet context={{ session, business } satisfies OwnerContext} />
+        <Outlet context={{ identity, business } satisfies OwnerContext} />
       </main>
     </div>
   );
 }
 
-function BusinessHeader({ business }: { business: Business }) {
+function BusinessHeader({ business }: { business: OwnerBusiness }) {
   return (
     <Link to="/owner" className="flex min-w-0 items-center gap-2.5">
       <span className="grid size-9 shrink-0 place-items-center rounded-lg text-sm font-bold text-white" style={{ backgroundColor: business.brandColor }}>

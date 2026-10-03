@@ -1,6 +1,6 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useBackend } from '../backend/context';
 import { ChatWidget } from '../components/ChatWidget';
-import { useDb } from '../lib/db';
 import NotFound from './NotFound';
 
 const mapleMenu = [
@@ -20,19 +20,20 @@ const harborMenu = [
 export default function DemoSite() {
   const { slug } = useParams();
   const [params] = useSearchParams();
-  const db = useDb();
-  const business = db.businesses.find((b) => b.slug === slug);
+  const backend = useBackend();
+  const businesses = backend.useDemoBusinesses();
+  const business = businesses.find((b) => b.slug === slug);
   if (!business) return <NotFound />;
 
   const isBakery = business.slug === 'maple-street-bakery';
   const menu = isBakery ? mapleMenu : harborMenu;
-  const others = db.businesses.filter((b) => b.id !== business.id);
+  const others = businesses.filter((b) => b.id !== business.id);
 
   return (
     <div className="min-h-dvh bg-white">
       <div className="bg-slate-900 px-4 py-2 text-center text-xs text-slate-200">
         <span className="font-semibold text-white">Demo website.</span> The chat bubble in the corner is the embeddable widget.
-        AI replies are simulated.{' '}
+        {backend.chat.simulated ? ' AI replies are simulated.' : ' Replies come from Amazon Bedrock, limited to approved answers.'}{' '}
         <Link to="/" className="underline">
           Demo home
         </Link>
@@ -104,7 +105,7 @@ export default function DemoSite() {
         </footer>
       </main>
 
-      <ChatWidget key={business.widgetKey} widgetKey={business.widgetKey} defaultOpen={params.get('chat') === 'open'} />
+      <ChatWidget key={business.widgetKey} client={backend.chat} widgetKey={business.widgetKey} defaultOpen={params.get('chat') === 'open'} />
     </div>
   );
 }

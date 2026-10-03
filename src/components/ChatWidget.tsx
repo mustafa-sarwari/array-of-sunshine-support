@@ -1,26 +1,17 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useDb } from '../lib/db';
-import {
-  MAX_VISITOR_MESSAGE_LENGTH,
-  getVisitorTranscript,
-  getWidgetConfig,
-  sendVisitorMessage,
-  startConversation,
-  submitHandoff,
-  validateHandoff,
-  type HandoffInput,
-  type VisitorConversation,
-} from '../lib/publicApi';
-import type { ChatMessage } from '../lib/types';
+import { PublicApiError, type PublicChatClient, type PublicWidgetConfig, type VisitorConversation } from '../lib/chatTypes';
+import type { ChatMessage, MessageOutcome } from '../lib/types';
+import { MAX_VISITOR_MESSAGE_LENGTH, validateHandoff, type HandoffInput } from '../lib/validation';
 
 /**
- * Embeddable public chat widget. It talks only to publicApi (the stand-in for
- * the public-chat Lambda) using a public widget key and the visitor's own
- * conversation token, so it cannot reach private conversations or documents.
+ * Public chat widget, used by the in-app demo sites and by the standalone
+ * widget.js bundle. It only knows a public widget key and the id and token of
+ * the conversation it started, so it cannot reach other visitors'
+ * conversations, drafts, inquiries, or documents.
  */
 
 function storageKey(widgetKey: string) {
-  return `aos-support-demo:widget:${widgetKey}`;
+  return `aos-support:conversation:${widgetKey}`;
 }
 
 function loadRef(widgetKey: string): VisitorConversation | null {
@@ -33,23 +24,31 @@ function loadRef(widgetKey: string): VisitorConversation | null {
 }
 
 function saveRef(widgetKey: string, ref: VisitorConversation | null) {
-  if (ref) localStorage.setItem(storageKey(widgetKey), JSON.stringify(ref));
-  else localStorage.removeItem(storageKey(widgetKey));
+  try {
+    if (ref) localStorage.setItem(storageKey(widgetKey), JSON.stringify(ref));
+    else localStorage.removeItem(storageKey(widgetKey));
+  } catch {
+    // Without storage the chat still works; it just isn't restored on the next page.
+  }
 }
+
+let localIds = 0;
+const localMessage = (role: ChatMessage['role'], text: string, outcome?: MessageOutcome): ChatMessage => ({
+  id: `local_${++localIds}`,
+  role,
+  text,
+  outcome,
+  createdAt: new Date().toISOString(),
+});
 
 const emptyHandoff: HandoffInput = { name: '', email: '', phone: '', message: '' };
 
-export function ChatWidget({ widgetKey, defaultOpen = false }: { widgetKey: string; defaultOpen?: boolean }) {
-  useDb();
-  let config: ReturnType<typeof getWidgetConfig> | null = null;
-  try {
-    config = getWidgetConfig(widgetKey);
-  } catch {
-    config = null;
-  }
-
+export function ChatWidget({ client, widgetKey, defaultOpen = false }: { client: PublicChatClient; widgetKey: string; defaultOpen?: boolean }) {
+  const [config, setConfig] = useState<PublicWidgetConfig | null>(null);
   const [open, setOpen] = useState(defaultOpen);
   const [ref, setRef] = useState<VisitorConversation | null>(() => loadRef(widgetKey));
+  const [restoredRef, setRestoredRef] = useState<VisitorConversation | null>(null);
+  const [transcript, setTranscript] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [draft, setDraft] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -57,18 +56,54 @@ export function ChatWidget({ widgetKey, defaultOpen = false }: { widgetKey: stri
   const [showHandoff, setShowHandoff] = useState(false);
   const [handoff, setHandoff] = useState<HandoffInput>(emptyHandoff);
   const [handoffErrors, setHandoffErrors] = useState<string[]>([]);
+  const [handoffSending, setHandoffSending] = useState(false);
   const [dismissedOfferFor, setDismissedOfferFor] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setRef(loadRef(widgetKey));
-    setShowHandoff(false);
-    setDraft(null);
-    setError(null);
-  }, [widgetKey]);
+    let cancelled = false;
+    client.getConfig(widgetKey).then(
+      (c) => !cancelled && setConfig(c),
+      (e: unknown) => {
+        if (cancelled) return;
+        setConfig(null);
+        console.warn('[support widget]', e instanceof Error ? e.message : e);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [client, widgetKey]);
 
-  const transcript: ChatMessage[] = ref ? (getVisitorTranscript(widgetKey, ref) ?? []) : [];
+  // A saved conversation is only fetched once the visitor opens the chat.
+  const restoring = open && !!ref && restoredRef !== ref;
+  useEffect(() => {
+    if (!restoring || !ref) return;
+    let cancelled = false;
+    client.getTranscript(widgetKey, ref).then(
+      (messages) => {
+        if (cancelled) return;
+        setRestoredRef(ref);
+        if (messages) {
+          setTranscript(messages);
+        } else {
+          saveRef(widgetKey, null);
+          setRef(null);
+          setTranscript([]);
+        }
+      },
+      (e: unknown) => {
+        if (cancelled) return;
+        setRestoredRef(ref);
+        setError(e instanceof Error ? e.message : 'Could not load your conversation.');
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [client, widgetKey, ref, restoring]);
+
   const handedOff = transcript.some((m) => m.role === 'system');
   const lastAssistant = [...transcript].reverse().find((m) => m.role === 'assistant');
   const offerHandoff =
@@ -78,13 +113,6 @@ export function ChatWidget({ widgetKey, defaultOpen = false }: { widgetKey: stri
     lastAssistant?.outcome === 'handoff_offered' &&
     transcript[transcript.length - 1]?.id === lastAssistant.id &&
     dismissedOfferFor !== lastAssistant.id;
-
-  useEffect(() => {
-    if (ref && getVisitorTranscript(widgetKey, ref) === null) {
-      saveRef(widgetKey, null);
-      setRef(null);
-    }
-  }, [ref, widgetKey]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -97,27 +125,39 @@ export function ChatWidget({ widgetKey, defaultOpen = false }: { widgetKey: stri
   if (!config) return null;
   const brand = config.brandColor;
 
-  function ensureConversation(): VisitorConversation {
-    if (ref && getVisitorTranscript(widgetKey, ref) !== null) return ref;
-    const created = startConversation(widgetKey, window.location.pathname);
+  async function ensureConversation(): Promise<VisitorConversation> {
+    if (ref) return ref;
+    const created = await client.start(widgetKey, window.location.pathname);
     saveRef(widgetKey, created);
     setRef(created);
+    setRestoredRef(created);
     return created;
   }
 
   async function send(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || busy) return;
+    if (!trimmed || busy || restoring) return;
     setError(null);
     setBusy(true);
     setInput('');
     setShowHandoff(false);
     setDraft('');
+    let reply = '';
     try {
-      const conv = ensureConversation();
-      for await (const event of sendVisitorMessage(widgetKey, conv, trimmed)) {
-        if (event.type === 'delta') setDraft((d) => (d ?? '') + event.text);
+      const conv = await ensureConversation();
+      setTranscript((t) => [...t, localMessage('visitor', trimmed)]);
+      let outcome: MessageOutcome | undefined;
+      for await (const event of client.sendMessage(widgetKey, conv, trimmed)) {
+        if (event.type === 'delta') {
+          reply += event.text;
+          setDraft(reply);
+        } else if (event.type === 'done') {
+          outcome = event.outcome;
+        } else {
+          throw new PublicApiError(event.message);
+        }
       }
+      setTranscript((t) => [...t, localMessage('assistant', reply, outcome)]);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.');
     } finally {
@@ -139,23 +179,30 @@ export function ChatWidget({ widgetKey, defaultOpen = false }: { widgetKey: stri
     setShowHandoff(true);
   }
 
-  function onHandoffSubmit(e: FormEvent) {
+  async function onHandoffSubmit(e: FormEvent) {
     e.preventDefault();
+    if (handoffSending) return;
     const errors = validateHandoff(handoff);
     setHandoffErrors(errors);
     if (errors.length) return;
+    setHandoffSending(true);
     try {
-      submitHandoff(widgetKey, ensureConversation(), handoff);
+      await client.submitHandoff(widgetKey, await ensureConversation(), handoff);
+      setTranscript((t) => [...t, localMessage('system', `${handoff.name.trim()} asked the team to follow up at ${handoff.email.trim()}.`)]);
       setShowHandoff(false);
       setHandoff(emptyHandoff);
     } catch (err) {
       setHandoffErrors([err instanceof Error ? err.message : 'Could not send your request.']);
+    } finally {
+      setHandoffSending(false);
     }
   }
 
   function startOver() {
     saveRef(widgetKey, null);
     setRef(null);
+    setRestoredRef(null);
+    setTranscript([]);
     setShowHandoff(false);
     setError(null);
     setDismissedOfferFor(null);
@@ -197,14 +244,22 @@ export function ChatWidget({ widgetKey, defaultOpen = false }: { widgetKey: stri
             </button>
           </header>
 
-          <div className="flex items-center justify-center gap-1.5 border-b border-fuchsia-100 bg-fuchsia-50 px-3 py-1.5 text-[11px] font-medium text-fuchsia-800">
-            Local demo: AI responses are simulated. No model is called.
-          </div>
+          {client.simulated && (
+            <div className="flex items-center justify-center gap-1.5 border-b border-fuchsia-100 bg-fuchsia-50 px-3 py-1.5 text-[11px] font-medium text-fuchsia-800">
+              Local demo: AI responses are simulated. No model is called.
+            </div>
+          )}
 
-          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4" aria-live="polite" aria-busy={busy}>
+          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4" aria-live="polite" aria-busy={busy || restoring}>
             <Bubble role="assistant" brand={brand} text={config.greeting} />
 
-            {transcript.length === 0 && !busy && config.suggestedQuestions.length > 0 && (
+            {restoring && (
+              <p className="text-center text-xs text-slate-500" role="status">
+                Loading your conversation…
+              </p>
+            )}
+
+            {transcript.length === 0 && !busy && !restoring && config.suggestedQuestions.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-1">
                 {config.suggestedQuestions.map((q) => (
                   <button
@@ -262,7 +317,7 @@ export function ChatWidget({ widgetKey, defaultOpen = false }: { widgetKey: stri
             )}
 
             {showHandoff && (
-              <form onSubmit={onHandoffSubmit} className="space-y-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200" noValidate>
+              <form onSubmit={(e) => void onHandoffSubmit(e)} className="space-y-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200" noValidate>
                 <p className="text-sm font-semibold text-slate-900">Contact {config.businessName}</p>
                 <p className="text-xs text-slate-600">A person will follow up. Only the business sees these details.</p>
                 <input
@@ -310,8 +365,13 @@ export function ChatWidget({ widgetKey, defaultOpen = false }: { widgetKey: stri
                   <button type="button" onClick={() => setShowHandoff(false)} className="rounded-md px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100">
                     Cancel
                   </button>
-                  <button type="submit" className="rounded-md px-3 py-1.5 text-xs font-semibold text-white" style={{ backgroundColor: brand }}>
-                    Send to team
+                  <button
+                    type="submit"
+                    disabled={handoffSending}
+                    className="rounded-md px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                    style={{ backgroundColor: brand }}
+                  >
+                    {handoffSending ? 'Sending…' : 'Send to team'}
                   </button>
                 </div>
               </form>
@@ -344,7 +404,7 @@ export function ChatWidget({ widgetKey, defaultOpen = false }: { widgetKey: stri
               />
               <button
                 type="submit"
-                disabled={busy || !input.trim()}
+                disabled={busy || restoring || !input.trim()}
                 className="grid size-10 shrink-0 place-items-center rounded-xl text-white disabled:opacity-40"
                 style={{ backgroundColor: brand }}
                 aria-label="Send message"

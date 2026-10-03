@@ -13,8 +13,11 @@ export interface KnowledgeItem {
   updatedAt: string;
 }
 
-export interface RetrievalMatch {
-  item: KnowledgeItem;
+/** A knowledge item as the owner sees it. The business is implied by the signed-in identity. */
+export type KnowledgeEntry = Omit<KnowledgeItem, 'businessId'>;
+
+export interface RetrievalMatch<T extends KnowledgeEntry = KnowledgeItem> {
+  item: T;
   score: number;
 }
 

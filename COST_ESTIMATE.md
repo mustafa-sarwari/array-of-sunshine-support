@@ -100,7 +100,11 @@ On October 3, 2026 I ran read-only `ListFoundationModels` and `ListInferenceProf
 | Amazon Nova 2 Lite | Profile `us.amazon.nova-2-lite-v1:0` or `global.amazon.nova-2-lite-v1:0`. **Not usable on the Free plan.** | $0.33 / $2.75 (global profile: $0.30 / $2.50) |
 | Anthropic Claude Haiku 4.5 | Profile `us.anthropic.claude-haiku-4-5-20251001-v1:0`. **Not usable on the Free plan.** | Not returned by the Price List API (sold through AWS Marketplace). See the Bedrock pricing page. |
 
-### Region note: Nova Lite in us-east-2 on the Free plan (unresolved)
+### Region note: Nova Lite in us-east-2 on the Free plan (decided: option A)
+
+**Decision (October 3, 2026): option A.** The app stays in us-east-2 and the `public-chat` Lambda
+calls Nova Lite in us-east-1 (`BEDROCK_REGION`, default `us-east-1`). This is implemented in code
+but not yet confirmed by a real model call.
 
 A second read-only check on October 3, 2026 found a conflict:
 

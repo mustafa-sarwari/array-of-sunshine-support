@@ -1,7 +1,8 @@
-// End-to-end smoke test for the local demo. Drives the installed Microsoft Edge
-// (or Chrome) against the running preview server. Usage:
-//   npm run preview            (in one terminal)
-//   npm run smoke              (in another)
+// End-to-end smoke test for the local demo and the standalone widget. Drives the
+// installed Microsoft Edge (or Chrome) against the running preview server. Usage:
+//   npm run build && npm run build:widget && npm run preview    (in one terminal)
+//   npm run smoke                                               (in another)
+// The standalone widget talks to a mocked chat endpoint; nothing reaches AWS.
 import { mkdirSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 
@@ -25,6 +26,35 @@ async function ask(page, text, expected) {
   await dialog.getByLabel('Type your question').press('Enter');
   await dialog.getByText(expected).last().waitFor({ timeout: 15_000 });
   await page.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), null, { timeout: 15_000 });
+}
+
+const MOCK_CHAT_URL = 'https://chat.example.test/';
+const mockRequests = [];
+
+/** Stands in for the public-chat function URL, including its NDJSON message stream. */
+async function mockChat(route) {
+  const body = JSON.parse(route.request().postData() || '{}');
+  mockRequests.push(body);
+  const headers = { 'Access-Control-Allow-Origin': '*' };
+  const json = (data) => route.fulfill({ status: 200, headers, contentType: 'application/json', body: JSON.stringify(data) });
+  switch (body.action) {
+    case 'config':
+      return json({ businessName: 'Mock Bakery', greeting: 'Hello from the mock endpoint!', brandColor: '#b45309', suggestedQuestions: ['Are you open on Sunday?'] });
+    case 'start':
+      return json({ conversationId: 'conv_mock_00000001', visitorToken: 'mock-visitor-token' });
+    case 'transcript':
+      return json({ messages: [] });
+    case 'message': {
+      const events = [
+        { type: 'delta', text: 'We are open Sunday ' },
+        { type: 'delta', text: '8 am to 2 pm (mock stream).' },
+        { type: 'done', outcome: 'answered' },
+      ];
+      return route.fulfill({ status: 200, headers, contentType: 'application/x-ndjson', body: events.map((e) => JSON.stringify(e)).join('\n') + '\n' });
+    }
+    default:
+      return route.fulfill({ status: 400, headers, contentType: 'application/json', body: JSON.stringify({ error: 'Unknown action.' }) });
+  }
 }
 
 async function signInAs(page, businessName) {
@@ -104,6 +134,39 @@ try {
   if (await page.getByText('Can I order a custom or birthday cake?').count()) throw new Error('Harbor owner can see bakery knowledge');
   step('bike-shop owner sees only bike-shop data');
   await desktop.close();
+
+  console.log('Standalone widget.js');
+  const embed = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  await embed.route(`${MOCK_CHAT_URL}**`, mockChat);
+  const w = await embed.newPage();
+  watch(w);
+  await w.goto(`${BASE}/widget-test.html?api=${encodeURIComponent(MOCK_CHAT_URL)}`);
+  const launcher = w.getByRole('button', { name: 'Chat with Mock Bakery' });
+  await launcher.waitFor();
+  const look = await launcher.evaluate((el) => ({ width: el.getBoundingClientRect().width, shadow: getComputedStyle(el).boxShadow }));
+  if (look.width !== 56) throw new Error(`Widget launcher is ${look.width}px wide; host page styles leaked into the widget`);
+  if (look.shadow === 'none') throw new Error('Widget ring/shadow utilities did not apply inside the shadow root');
+  step('widget mounts in a shadow root, unaffected by host page CSS');
+  await launcher.click();
+  const panel = await w.getByRole('dialog', { name: /chat assistant/i }).evaluate((el) => ({
+    height: el.getBoundingClientRect().height,
+    font: getComputedStyle(el).fontFamily,
+    headerPadding: getComputedStyle(el.querySelector('header')).paddingTop,
+  }));
+  if (panel.height !== 640) throw new Error(`Widget panel is ${panel.height}px tall, expected 640px`);
+  if (panel.headerPadding !== '16px') throw new Error(`Widget header padding is ${panel.headerPadding}, expected 16px`);
+  if (!panel.font.startsWith('Inter')) throw new Error(`Widget inherited the host page font: ${panel.font}`);
+  await ask(w, 'Are you open on Sunday?', /8 am to 2 pm \(mock stream\)/);
+  await w.getByText('From approved business information').waitFor();
+  step('widget streams an NDJSON reply from the chat endpoint');
+  if (mockRequests.some((r) => 'businessId' in r) || !mockRequests.every((r) => r.widgetKey === 'pk_demo_maple_7c1f2a')) {
+    throw new Error('Widget requests must carry only the widget key, never a businessId');
+  }
+  const sent = mockRequests.find((r) => r.action === 'message');
+  if (sent?.visitorToken !== 'mock-visitor-token') throw new Error('Widget did not send its visitor token with the message');
+  step('widget requests carry only the widget key and visitor token');
+  await w.screenshot({ path: `${SHOTS}/widget-embed-desktop.png` });
+  await embed.close();
 
   console.log('Mobile flow');
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });

@@ -64,7 +64,7 @@ export function __setDbForTests(db: DemoDatabase): void {
   cache = db;
 }
 
-function subscribe(listener: () => void): () => void {
+export function subscribeDb(listener: () => void): () => void {
   listeners.add(listener);
   const onStorage = (e: StorageEvent) => {
     if (e.key === STORAGE_KEY) {
@@ -81,5 +81,5 @@ function subscribe(listener: () => void): () => void {
 
 /** Re-render when demo data changes in this tab or another tab. */
 export function useDb(): DemoDatabase {
-  return useSyncExternalStore(subscribe, getDb, getDb);
+  return useSyncExternalStore(subscribeDb, getDb, getDb);
 }

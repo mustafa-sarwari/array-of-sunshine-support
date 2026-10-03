@@ -1,4 +1,4 @@
-import type { KnowledgeItem, MessageIntent, RetrievalMatch } from './knowledge';
+import type { KnowledgeEntry, MessageIntent, RetrievalMatch } from './knowledge';
 
 /**
  * Deterministic keyword retrieval over a single business's approved entries.
@@ -118,16 +118,16 @@ export const DEFAULT_MIN_SCORE = 0.4;
  * considered. An item qualifies only if at least one meaningful (non-weak)
  * query token appears in its keywords or question.
  */
-export function retrieveApproved(
-  items: readonly KnowledgeItem[],
+export function retrieveApproved<T extends KnowledgeEntry>(
+  items: readonly T[],
   query: string,
   { limit = 3, minScore = DEFAULT_MIN_SCORE }: RetrievalOptions = {},
-): RetrievalMatch[] {
+): RetrievalMatch<T>[] {
   const queryTokens = [...new Set(tokenize(query))];
   if (queryTokens.length === 0) return [];
 
   const denominator = queryTokens.reduce((sum, t) => sum + (WEAK_TOKENS.has(t) ? 1 : 3), 0);
-  const matches: RetrievalMatch[] = [];
+  const matches: RetrievalMatch<T>[] = [];
 
   for (const item of items) {
     if (item.status !== 'approved') continue;

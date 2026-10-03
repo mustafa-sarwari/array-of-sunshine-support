@@ -15,7 +15,7 @@ async function ask(widgetKey: string, ref: pub.VisitorConversation, text: string
   let outcome = '';
   for await (const ev of pub.sendVisitorMessage(widgetKey, ref, text, { delayMs: 0 })) {
     if (ev.type === 'delta') reply += ev.text;
-    else outcome = ev.outcome;
+    else if (ev.type === 'done') outcome = ev.outcome;
   }
   return { reply, outcome };
 }
