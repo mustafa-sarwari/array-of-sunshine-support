@@ -186,9 +186,15 @@ Amplify Hosting serves the dashboard and widget.js
 
 Recommended model: **Amazon Nova Lite** (`amazon.nova-lite-v1:0`). On October 3, 2026, read-only
 calls confirmed it is `ACTIVE`, supports on-demand invocation in `us-east-2`, and supports
-streaming. It costs $0.06 per 1M input tokens and $0.24 per 1M output tokens in us-east-2.
-It is also the only candidate that runs in-Region, which matters because the AWS Free plan doesn't
-support cross-Region inference profiles.
+streaming. It costs $0.06 per 1M input tokens and $0.24 per 1M output tokens.
+
+> **Open blocker: Nova Lite in us-east-2 on the Free plan.** A read-only quota check found no
+> in-Region on-demand quota for Nova Lite in us-east-2, only cross-Region quotas. us-east-1 has
+> normal in-Region quotas. The AWS Free plan doesn't support cross-Region inference, so the
+> current config (Nova Lite called in us-east-2) will probably fail on this account. The
+> recommended fix is to keep the app in us-east-2 and call Nova Lite in us-east-1. See the
+> [region note in COST_ESTIMATE.md](COST_ESTIMATE.md#region-note-nova-lite-in-us-east-2-on-the-free-plan-unresolved)
+> for all four options.
 
 To change the model, set `BEDROCK_MODEL_ID` before deploying. If you choose a cross-region
 inference profile ID (for example `us.amazon.nova-micro-v1:0`, Paid plan only), also update the

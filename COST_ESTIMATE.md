@@ -50,7 +50,7 @@ Sources: [Choosing a plan](https://docs.aws.amazon.com/awsaccountbilling/latest/
 - **You then have 90 days to upgrade to the Paid plan.** After 90 days, AWS permanently deletes the account and everything in it.
 - **If you upgrade to the Paid plan** (at any time), the remaining credits apply automatically to your bills. Free Tier credits expire 12 months after the account was opened, around October 2027 for this account. After the credits are used or expire, you pay standard pay-as-you-go prices, which is the "usage cost" in this document.
 - **Free plan limits that affect this project:**
-  - **Bedrock cross-Region inference profiles aren't supported on the Free plan.** The recommended in-Region model, `amazon.nova-lite-v1:0`, works. Nova Micro, which needs the `us.` cross-Region profile, does not.
+  - **Bedrock cross-Region inference profiles aren't supported on the Free plan.** This likely blocks Nova Lite in `us-east-2`; see [Model availability](#model-availability-check-and-recommendation).
   - **AWS Marketplace is limited to Bedrock and free offers.**
   - **Joining AWS Organizations or Control Tower automatically upgrades the account** to the Paid plan.
 
@@ -92,16 +92,37 @@ On October 3, 2026 I ran read-only `ListFoundationModels` and `ListInferenceProf
 `us-east-2` against the project's AWS account. No model was invoked. All of the candidates below are
 `ACTIVE` and support response streaming.
 
-| Model | How to call it from us-east-2 | Input / output price per 1M tokens (us-east-2) |
+| Model | How to call it | Input / output price per 1M tokens |
 |---|---|---|
-| **Amazon Nova Lite (recommended)** | Base model ID `amazon.nova-lite-v1:0` (on-demand in-Region) | **$0.06 / $0.24** |
-| Amazon Nova Micro (cheapest) | Only through inference profile `us.amazon.nova-micro-v1:0`. **Not usable on the Free plan.** | $0.035 / $0.14 |
+| **Amazon Nova Lite (recommended)** | Base model ID `amazon.nova-lite-v1:0`. See the region note below. | **$0.06 / $0.24** (same in us-east-1 and us-east-2) |
+| Amazon Nova Micro (cheapest) | From us-east-2 only through inference profile `us.amazon.nova-micro-v1:0`. **Not usable from us-east-2 on the Free plan.** | $0.035 / $0.14 |
+| Amazon Nova Pro | Base model ID `amazon.nova-pro-v1:0`, with an in-Region on-demand quota in us-east-2 | $0.80 / $3.20 (us-east-2) |
 | Amazon Nova 2 Lite | Profile `us.amazon.nova-2-lite-v1:0` or `global.amazon.nova-2-lite-v1:0`. **Not usable on the Free plan.** | $0.33 / $2.75 (global profile: $0.30 / $2.50) |
 | Anthropic Claude Haiku 4.5 | Profile `us.anthropic.claude-haiku-4-5-20251001-v1:0`. **Not usable on the Free plan.** | Not returned by the Price List API (sold through AWS Marketplace). See the Bedrock pricing page. |
 
-**Recommendation: Amazon Nova Lite, `amazon.nova-lite-v1:0`.**
+### Region note: Nova Lite in us-east-2 on the Free plan (unresolved)
 
-- It is the only candidate that runs on-demand directly in `us-east-2`, so it works on the Free plan, requests stay in Ohio, and the IAM policy needs only one foundation-model ARN.
+A second read-only check on October 3, 2026 found a conflict:
+
+- `GetFoundationModel` in us-east-2 lists `ON_DEMAND` for `amazon.nova-lite-v1:0`, and `GetFoundationModelAvailability` reports the account as authorized.
+- But **Service Quotas has no in-Region on-demand quota for Nova Lite in us-east-2**. It lists only cross-Region quotas. Nova Pro, Llama, Mistral, and others do have in-Region quotas there.
+- In **us-east-1**, Nova Lite has normal in-Region on-demand quotas: 2,000 requests and 4,000,000 tokens per minute.
+
+This strongly suggests Nova Lite can only be reached from us-east-2 through the `us.` cross-Region
+profile, which the Free plan doesn't support. Only a real model call can confirm it, and no paid
+call has been made. Options:
+
+| Option | Model cost (realistic, 10/day / 100/day) | Trade-off |
+|---|---|---|
+| **A. Keep the app in us-east-2 and call Nova Lite in us-east-1** (recommended) | $0.08 / $0.76 | Small backend change (a Bedrock region setting). Visitor messages are processed by the model in N. Virginia; everything else stays in Ohio. |
+| B. Use Nova Pro in us-east-2 | $1.01 / $10.08 | No code change beyond the model ID; about 13 times the model cost |
+| C. Upgrade to the Paid plan and use `us.amazon.nova-lite-v1:0` | $0.08 / $0.76 | Ends the Free plan's no-charge guarantee. Requests may be served from any US Region. |
+| D. Move the whole stack to us-east-1 | $0.08 / $0.76 | Simplest IAM, but all data moves to N. Virginia |
+
+The estimates in this document assume Nova Lite pricing, which is the same for options A, C, and D.
+
+**Recommendation: Amazon Nova Lite, `amazon.nova-lite-v1:0`, called in-Region (option A or D on the Free plan).**
+
 - The task is narrow: rephrase up to 5 owner-approved answers, or return the handoff sentinel. A small model handles this well, and the backend already refuses to call the model when no approved entry matches.
 - After upgrading to the Paid plan, Nova Micro would save a few cents a month. Move up to Nova 2 Lite or Claude Haiku 4.5 only if testing shows Nova Lite's answers are not good enough.
 - **Streaming:** the backend uses the Bedrock Runtime `ConverseStream` API, which the AWS docs list as supported for these models. Lambda needs `bedrock:InvokeModelWithResponseStream`.
