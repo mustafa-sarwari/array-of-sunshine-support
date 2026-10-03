@@ -32,13 +32,13 @@ export default function Home() {
               </>
             ) : (
               <>
-                <Badge tone="green">Amazon Cognito sign-in</Badge>
-                <Badge tone="indigo">Amazon Bedrock replies</Badge>
+                <Badge tone="green">{backend.mode === 'server' ? 'Real server sign-in' : 'Amazon Cognito sign-in'}</Badge>
+                <Badge tone="indigo">{backend.mode === 'server' ? 'SQLite storage · approved FAQ matching' : 'Amazon Bedrock replies'}</Badge>
               </>
             )}
           </div>
           <h1 className="mt-4 max-w-3xl font-display text-4xl leading-tight text-slate-900 sm:text-5xl">
-            An AI support assistant that only answers from what the owner approved.
+            A support assistant that answers from information the owner approved.
           </h1>
           <p className="mt-4 max-w-2xl text-base text-slate-600 sm:text-lg">
             {local && 'This is a local demo. '}Business owners manage approved FAQs and service details. Visitors chat through a

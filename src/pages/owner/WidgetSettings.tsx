@@ -21,9 +21,9 @@ export default function WidgetSettings() {
   // Reset only when the business changes, so unrelated data updates don't wipe in-progress edits.
   useEffect(() => setForm(profileOf(business)), [business.widgetKey]);
 
-  const scriptOrigin = backend.mode === 'aws' ? window.location.origin : 'https://YOUR-AMPLIFY-DOMAIN';
+  const scriptOrigin = backend.mode !== 'local' ? window.location.origin : 'https://YOUR-AMPLIFY-DOMAIN';
   const embed = `<script src="${scriptOrigin}/widget.js"
-        data-widget-key="${business.widgetKey}" async></script>`;
+        data-widget-key="${business.widgetKey}"${backend.mode === 'server' ? ` data-api-url="${window.location.origin}/api/chat"` : ''} async></script>`;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -109,7 +109,7 @@ export default function WidgetSettings() {
           <Card className="p-5">
             <h2 className="text-sm font-semibold text-slate-900">Embed code</h2>
             <p className="mt-1 text-xs text-slate-600">
-              {backend.mode === 'aws' ? 'Paste' : 'After the AWS deployment, paste'} this before <code>&lt;/body&gt;</code> on your website. The
+              {backend.mode !== 'local' ? 'Paste' : 'After the AWS deployment, paste'} this before <code>&lt;/body&gt;</code> on your website. The
               widget key is public. It only allows chatting with your approved answers and never exposes conversations or documents.
             </p>
             <pre className="mt-3 overflow-x-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100">{embed}</pre>
@@ -121,7 +121,7 @@ export default function WidgetSettings() {
             <h2 className="text-sm font-semibold text-slate-900">Allowed websites</h2>
             <p className="mt-1 text-xs text-slate-600">
               The public chat endpoint rejects requests from other origins.
-              {backend.mode === 'aws' && ' Ask your administrator to change this list.'}
+              {backend.mode !== 'local' && ' Ask your administrator to change this list.'}
             </p>
             <ul className="mt-2 space-y-1 text-xs text-slate-700">
               {business.allowedOrigins.map((o) => (

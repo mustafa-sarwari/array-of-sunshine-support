@@ -11,7 +11,7 @@ import type { KnowledgeInput } from '../lib/validation';
  * always comes from the signed-in identity.
  */
 
-export type BackendMode = 'local' | 'aws';
+export type BackendMode = 'local' | 'aws' | 'server';
 
 export interface OwnerIdentity {
   /** Cognito `sub` in the AWS build, the demo owner id locally. */

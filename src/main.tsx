@@ -9,7 +9,7 @@ import './index.css';
 const root = createRoot(document.getElementById('root')!);
 
 // A literal condition on import.meta.env lets the bundler drop the unused backend entirely.
-const load: Promise<{ backend: Backend }> = import.meta.env.VITE_BACKEND === 'aws' ? import('./backend/aws') : import('./backend/local');
+const load: Promise<{ backend: Backend }> = import.meta.env.VITE_BACKEND === 'aws' ? import('./backend/aws') : import.meta.env.VITE_BACKEND === 'local' ? import('./backend/local') : import('./backend/server');
 
 load.then(
   ({ backend }) =>

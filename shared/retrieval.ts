@@ -45,6 +45,7 @@ const WEAK_TOKENS = new Set([
 ]);
 
 const SYNONYM_GROUPS: string[][] = [
+  ['bread', 'loaf'],
   ['hour', 'open', 'close', 'closing', 'opening', 'schedule', 'time'],
   ['price', 'cost', 'charge', 'fee', 'expensive', 'cheap', 'pricing', 'rate'],
   ['deliver', 'delivery', 'ship', 'shipping', 'doordash', 'courier'],
@@ -135,6 +136,10 @@ export function retrieveApproved<T extends KnowledgeEntry>(
     const questionTokens = tokenSet([item.question]);
     const answerTokens = tokenSet([item.answer]);
 
+    // Refuse a candidate when a meaningful qualifier is unsupported by it.
+    // E.g. ordinary cake FAQs cannot answer keto cake availability.
+    if (queryTokens.some(t => !WEAK_TOKENS.has(t) && !keywordTokens.has(t) && !questionTokens.has(t) && !answerTokens.has(t))) continue;
+
     let weight = 0;
     let strongHit = false;
     for (const t of queryTokens) {
@@ -164,7 +169,7 @@ export function detectIntent(text: string): MessageIntent {
   const t = normalizeText(text);
   if (!t) return 'question';
   if (HUMAN_PATTERN.test(t)) return 'human';
-  if (/^(hi|hello|hey|hiya|howdy|good (morning|afternoon|evening))( there)?$/.test(t)) return 'greeting';
+  if (/^(hi|hello|hey|hiya|howdy|good (morning|afternoon|evening))( there| [a-z]{2,20})?$/.test(t)) return 'greeting';
   if (/^(thanks|thank you|thx|ty|cheers|great thanks|ok thanks|perfect thanks)( (so much|a lot))?$/.test(t)) return 'thanks';
   return 'question';
 }

@@ -244,6 +244,7 @@ export function ChatWidget({ client, widgetKey, defaultOpen = false }: { client:
             </button>
           </header>
 
+          {config.assistantMode === 'faq' && <div className="bg-indigo-50 px-3 py-2 text-center text-xs text-indigo-800">Approved FAQ matching · no AI model</div>}
           {client.simulated && (
             <div className="flex items-center justify-center gap-1.5 border-b border-fuchsia-100 bg-fuchsia-50 px-3 py-1.5 text-[11px] font-medium text-fuchsia-800">
               Local demo: AI responses are simulated. No model is called.

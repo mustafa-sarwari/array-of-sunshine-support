@@ -80,7 +80,7 @@ export default function Knowledge() {
     if (v.length) return;
     try {
       await save.mutateAsync({ input, id: editing.id, resolves: editing.resolves });
-      setNotice(editing.id ? 'Entry updated.' : editing.resolves ? 'Answer added and question marked resolved.' : 'Entry added.');
+      setNotice(editing.id ? 'Entry updated.' : editing.resolves ? input.status === 'approved' ? 'Answer added and question marked resolved.' : 'Draft saved; question remains open.' : 'Entry added.');
       setEditing(null);
     } catch (err) {
       setErrors([err instanceof Error ? err.message : 'Could not save.']);
@@ -208,7 +208,7 @@ export default function Knowledge() {
                 {testResult.outcome === 'answered' ? (
                   <>
                     <p className="text-xs font-semibold text-emerald-700">Would answer from: {testResult.sourceIds.map(titleOf).join(', ')}</p>
-                    {backend.chat.simulated ? (
+                    {backend.mode !== 'aws' ? (
                       <p className="mt-1 whitespace-pre-line text-slate-700">{testResult.text}</p>
                     ) : (
                       <p className="mt-1 text-xs text-slate-600">The live assistant writes its reply with Amazon Bedrock using only these entries.</p>
@@ -244,7 +244,7 @@ export default function Knowledge() {
           <form onSubmit={onSave} className="space-y-4">
             {editing.resolves && (
               <p className="rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-800 ring-1 ring-indigo-200">
-                Saving will mark the unanswered question as resolved.
+                Saving an approved answer resolves this question. A draft leaves it open.
               </p>
             )}
             <div className="grid gap-4 sm:grid-cols-2">

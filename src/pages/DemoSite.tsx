@@ -33,7 +33,7 @@ export default function DemoSite() {
     <div className="min-h-dvh bg-white">
       <div className="bg-slate-900 px-4 py-2 text-center text-xs text-slate-200">
         <span className="font-semibold text-white">Demo website.</span> The chat bubble in the corner is the embeddable widget.
-        {backend.chat.simulated ? ' AI replies are simulated.' : ' Replies come from Amazon Bedrock, limited to approved answers.'}{' '}
+        {backend.chat.simulated ? ' AI replies are simulated.' : backend.mode === 'server' ? ' Replies use approved FAQ matching on the server; no AI model is called.' : ' Replies come from Amazon Bedrock, limited to approved answers.'}{' '}
         <Link to="/" className="underline">
           Demo home
         </Link>

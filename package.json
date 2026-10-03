@@ -5,7 +5,7 @@
   "description": "AI customer-support widget and owner dashboard (local demo + Amplify Gen 2 backend prep) for the Array of Sunshine project.",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.mjs",
     "build": "tsc -b && vite build",
     "build:widget": "vite build --config vite.widget.config.ts",
     "size:widget": "node scripts/check-widget-size.mjs",
@@ -14,7 +14,13 @@
     "typecheck:amplify": "tsc -p amplify/tsconfig.json --noEmit",
     "test": "vitest run",
     "smoke": "node scripts/smoke.mjs",
-    "check": "npm run typecheck && npm run typecheck:amplify && npm run test && vite build && npm run build:widget && npm run size:widget"
+    "check": "npm run typecheck && npm run typecheck:amplify && npm run typecheck:server && npm run test && npm run test:server && vite build && npm run build:widget && npm run size:widget",
+    "dev:frontend": "vite",
+    "dev:backend": "node --import tsx server/index.ts",
+    "start": "node --import tsx server/index.ts",
+    "test:server": "node --import tsx --test server/app.test.ts",
+    "typecheck:server": "tsc -p server/tsconfig.json --noEmit",
+    "smoke:server": "node scripts/smoke-server.mjs"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.15.7",

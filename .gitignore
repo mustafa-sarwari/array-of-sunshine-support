@@ -42,3 +42,9 @@ test-results
 .DS_Store
 Thumbs.db
 *.log
+
+# Local server database (contains private conversations and authentication)
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

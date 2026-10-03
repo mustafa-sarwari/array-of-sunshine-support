@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
   const outputs = existsSync('amplify_outputs.json')
     ? (JSON.parse(readFileSync('amplify_outputs.json', 'utf8')) as { custom?: { publicChatUrl?: string } })
     : undefined;
-  const defaultChatUrl = env.VITE_PUBLIC_CHAT_URL || outputs?.custom?.publicChatUrl || '';
+  const defaultChatUrl = env.VITE_PUBLIC_CHAT_URL || outputs?.custom?.publicChatUrl || '/api/chat';
 
   return {
     plugins: [tailwindcss()],

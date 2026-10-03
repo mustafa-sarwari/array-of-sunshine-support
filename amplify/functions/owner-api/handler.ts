@@ -181,7 +181,7 @@ const operations: Record<string, (businessId: string, args: Args) => Promise<unk
     await ddb.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
 
     const resolves = str(args, 'resolvesUnansweredId', 64, false);
-    if (resolves) {
+    if (resolves && item.status === 'approved') {
       await ddb
         .send(
           new UpdateCommand({

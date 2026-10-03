@@ -60,6 +60,7 @@ export function createHttpChatClient(endpoint: string): PublicChatClient {
       if (cached) return cached;
       const raw = await call<Partial<Record<keyof PublicWidgetConfig, unknown>>>({ action: 'config', widgetKey });
       const config: PublicWidgetConfig = {
+        assistantMode: raw.assistantMode === 'faq' ? 'faq' : undefined,
         widgetKey,
         businessName: typeof raw.businessName === 'string' ? raw.businessName : 'Support',
         greeting: typeof raw.greeting === 'string' && raw.greeting ? raw.greeting : 'Hi! How can I help?',

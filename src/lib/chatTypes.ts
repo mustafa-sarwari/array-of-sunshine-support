@@ -4,6 +4,7 @@ import type { HandoffInput } from './validation';
 /** Contract between the chat widget and whichever public chat backend it talks to. */
 
 export interface PublicWidgetConfig {
+  assistantMode?: 'faq' | 'ai';
   widgetKey: string;
   businessName: string;
   greeting: string;

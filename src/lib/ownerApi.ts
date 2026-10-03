@@ -101,12 +101,18 @@ export function saveKnowledge(
       saved = { id: newId('kb'), businessId, ...clean };
       db.knowledge.push(saved);
     }
-    if (resolvesUnansweredId) {
+    if (id && clean.status === 'approved') {
+      for (const q of db.unanswered) if (q.businessId === businessId && q.resolvedKnowledgeId === id) q.status = 'resolved';
+    }
+    if (resolvesUnansweredId && clean.status === 'approved') {
       const q = db.unanswered.find((u) => u.id === resolvesUnansweredId && u.businessId === businessId);
       if (q) {
         q.status = 'resolved';
         q.resolvedKnowledgeId = saved.id;
       }
+    } else if (resolvesUnansweredId) {
+      const q = db.unanswered.find(u => u.id === resolvesUnansweredId && u.businessId === businessId);
+      if (q) q.resolvedKnowledgeId = saved.id;
     }
   });
   return saved;
