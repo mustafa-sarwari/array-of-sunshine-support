@@ -103,8 +103,9 @@ On October 3, 2026 I ran read-only `ListFoundationModels` and `ListInferenceProf
 ### Region note: Nova Lite in us-east-2 on the Free plan (decided: option A)
 
 **Decision (October 3, 2026): option A.** The app stays in us-east-2 and the `public-chat` Lambda
-calls Nova Lite in us-east-1 (`BEDROCK_REGION`, default `us-east-1`). This is implemented in code
-but not yet confirmed by a real model call.
+calls Nova Lite in us-east-1. The code calls Bedrock in the app's own region by default; the deploy
+steps set the optional `BEDROCK_REGION=us-east-1` override for this account. This has not been
+confirmed by a real model call.
 
 A second read-only check on October 3, 2026 found a conflict:
 

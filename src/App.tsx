@@ -1,4 +1,6 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { useBackend } from './backend/context';
+import { DemoBanner } from './components/ui';
 import Home from './pages/Home';
 import DemoSite from './pages/DemoSite';
 import NotFound from './pages/NotFound';
@@ -12,22 +14,29 @@ import Unanswered from './pages/owner/Unanswered';
 import WidgetSettings from './pages/owner/WidgetSettings';
 
 export default function App() {
+  const { mode } = useBackend();
+  const { pathname } = useLocation();
+  // The dashboard shows the banner inside its content column so the sticky sidebar keeps its height.
+  const inDashboard = pathname.startsWith('/owner') && pathname !== '/owner/sign-in';
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/demo" element={<Navigate to="/demo/maple-street-bakery" replace />} />
-      <Route path="/demo/:slug" element={<DemoSite />} />
-      <Route path="/owner/sign-in" element={<SignIn />} />
-      <Route path="/owner" element={<OwnerLayout />}>
-        <Route index element={<Overview />} />
-        <Route path="knowledge" element={<Knowledge />} />
-        <Route path="conversations" element={<Conversations />} />
-        <Route path="conversations/:id" element={<Conversations />} />
-        <Route path="inquiries" element={<Inquiries />} />
-        <Route path="unanswered" element={<Unanswered />} />
-        <Route path="widget" element={<WidgetSettings />} />
-      </Route>
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      {mode === 'local' && !inDashboard && <DemoBanner />}
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/demo" element={<Navigate to="/demo/maple-street-bakery" replace />} />
+        <Route path="/demo/:slug" element={<DemoSite />} />
+        <Route path="/owner/sign-in" element={<SignIn />} />
+        <Route path="/owner" element={<OwnerLayout />}>
+          <Route index element={<Overview />} />
+          <Route path="knowledge" element={<Knowledge />} />
+          <Route path="conversations" element={<Conversations />} />
+          <Route path="conversations/:id" element={<Conversations />} />
+          <Route path="inquiries" element={<Inquiries />} />
+          <Route path="unanswered" element={<Unanswered />} />
+          <Route path="widget" element={<WidgetSettings />} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 }

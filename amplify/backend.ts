@@ -1,5 +1,5 @@
 import { defineBackend } from '@aws-amplify/backend';
-import { Duration, RemovalPolicy } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { FunctionUrlAuthType, HttpMethod, InvokeMode } from 'aws-cdk-lib/aws-lambda';
@@ -7,7 +7,8 @@ import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { storage } from './storage/resource';
 import { ownerApi } from './functions/owner-api/resource';
-import { DEFAULT_BEDROCK_REGION, DEFAULT_MODEL_ID, publicChat } from './functions/public-chat/resource';
+import { BEDROCK_REGION_OVERRIDE, DEFAULT_MODEL_ID, publicChat } from './functions/public-chat/resource';
+import { bedrockModelArns } from './bedrockAccess';
 
 const backend = defineBackend({ auth, data, storage, ownerApi, publicChat });
 
@@ -46,15 +47,13 @@ table.grantReadWriteData(chatFn);
 backend.publicChat.addEnvironment('TABLE_NAME', table.tableName);
 
 const modelId = process.env.BEDROCK_MODEL_ID ?? DEFAULT_MODEL_ID;
-const bedrockRegion = process.env.BEDROCK_REGION ?? DEFAULT_BEDROCK_REGION;
-// On-demand model ARN in the Bedrock region. If you switch to a cross-region inference
-// profile (e.g. us.amazon.nova-micro-v1:0, Paid plan only), grant the inference-profile ARN
-// AND arn:aws:bedrock:*::foundation-model/<base-model-id> instead.
+const chatStack = Stack.of(chatFn);
+const bedrockRegion = BEDROCK_REGION_OVERRIDE ?? chatStack.region;
 chatFn.addToRolePolicy(
   new PolicyStatement({
     effect: Effect.ALLOW,
     actions: ['bedrock:InvokeModelWithResponseStream', 'bedrock:InvokeModel'],
-    resources: [`arn:aws:bedrock:${bedrockRegion}::foundation-model/${modelId}`],
+    resources: bedrockModelArns(modelId, bedrockRegion, chatStack.account),
   }),
 );
 

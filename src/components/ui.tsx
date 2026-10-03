@@ -46,6 +46,16 @@ export function Badge({ tone = 'slate', children }: { tone?: BadgeTone; children
   );
 }
 
+/** Shown on every page of the local demo build. */
+export function DemoBanner({ className = '' }: { className?: string }) {
+  return (
+    <div role="note" className={`bg-fuchsia-700 px-4 py-2 text-center text-sm font-semibold text-white ${className}`}>
+      Demo — simulated sign-in, AI, and storage
+      <span className="hidden font-normal text-fuchsia-100 sm:inline"> · Nothing is sent to AWS. Data stays in this browser.</span>
+    </div>
+  );
+}
+
 /** Marks anything simulated in the local demo so it is never mistaken for production behavior. */
 export function SimulatedBadge({ children = 'Simulated' }: { children?: ReactNode }) {
   return (

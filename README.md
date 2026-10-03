@@ -22,8 +22,9 @@ dollars a month to run on AWS.
 - **Cost (checked October 3, 2026):** estimated AWS usage of about **$0.53/month at 10 conversations a day** and **$1.75/month at 100 a day** (realistic case), plus about $8/month if AWS WAF is added. **Out-of-pocket cost today is $0.** The AWS account is on the Free plan with $100 in credits. The Free plan ends on April 3, 2027 or when the credits run out, whichever comes first. See [Cost and AWS account](#cost-and-aws-account).
 
 > **Simulated in the local demo:** owner sign-in (no real security) and AI replies (no model is
-> called). Both are labeled in the UI with "Demo sign-in" and "Simulated AI" badges. All data lives
-> in your browser's `localStorage`. The businesses, people, emails, and phone numbers are fictional.
+> called). Every page of the local build shows a "Demo — simulated sign-in, AI, and storage"
+> banner, and the dashboard also has "Demo sign-in" and "Simulated AI" badges. All data lives in
+> your browser's `localStorage`. The businesses, people, emails, and phone numbers are fictional.
 
 ### What is real and what is simulated
 
@@ -51,8 +52,11 @@ clinic front desk:
 
 **Hosting and AI costs.** Real AWS hosting and AI model usage run in the client's AWS account and
 are billed by AWS to the client, within a monthly budget agreed in writing before deployment. An
-AWS Budgets alert is set at that amount. Development work is quoted separately. The cost figures in
-this README are estimates for a demo-sized workload, not a quote.
+AWS Budgets alert is set at that amount. Development work is a fixed quote agreed before work
+begins. The cost figures in this README are estimates for a demo-sized workload, not a quote.
+
+See [docs/CLIENT_OFFER.md](docs/CLIENT_OFFER.md) for the full offer and
+[docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) for a two-minute client demonstration.
 
 ![Widget answering from approved info and offering a handoff](docs/screenshots/widget-desktop.png)
 
@@ -129,6 +133,8 @@ credentials. They exist only in the browser demo.
 To start over, use **Reset demo data** on the home page or the dashboard overview.
 
 ### Two-minute walkthrough
+
+For a scripted version with talking points, see [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
 1. Open the Maple Street Bakery site and ask "Are you open on Sunday?". The answer comes from the approved hours entry.
 2. Ask "Do you have keto cupcakes?". The assistant says it has no approved information and offers a handoff. Click **Yes, contact the team** and send the form.
@@ -246,25 +252,38 @@ Recommended model: **Amazon Nova Lite** (`amazon.nova-lite-v1:0`). On October 3,
 calls confirmed it is `ACTIVE` and supports streaming. It costs $0.06 per 1M input tokens and
 $0.24 per 1M output tokens.
 
-> **Region decision: the app runs in us-east-2 and calls Nova Lite in us-east-1.** A read-only
+**Region configuration.** By default, Bedrock is called in the same region as the rest of the
+app, the region you deploy to (`us-east-2` here). The IAM policy is built from the same value, so
+the two always match. `BEDROCK_REGION` is an optional override, for models that have no
+in-Region on-demand access in the app's region. It changes both the Bedrock client and the IAM
+policy. If `BEDROCK_MODEL_ID` is a cross-Region inference profile (for example
+`us.amazon.nova-lite-v1:0`, Paid plan only), the IAM policy automatically grants the profile and
+its base model (`amplify/bedrockAccess.ts`).
+
+> **Why the deploy steps for this demo account set `BEDROCK_REGION=us-east-1`.** A read-only
 > quota check found no in-Region on-demand quota for Nova Lite in us-east-2 on this Free plan
 > account, only cross-Region quotas, and the Free plan doesn't support cross-Region inference.
-> us-east-1 has normal in-Region quotas. The `public-chat` Lambda therefore creates its Bedrock
-> client in `BEDROCK_REGION` (default `us-east-1`), and its IAM policy names the us-east-1 model
-> ARN. Visitor questions and approved answers cross from us-east-2 to us-east-1 for the model
-> call only. See the
+> us-east-1 has normal in-Region quotas. With the override, visitor questions and approved
+> answers cross from us-east-2 to us-east-1 for the model call only. Everything else stays in
+> us-east-2. See the
 > [region note in COST_ESTIMATE.md](COST_ESTIMATE.md#region-note-nova-lite-in-us-east-2-on-the-free-plan-decided-option-a)
 > for the other options that were considered.
 >
-> **Unverified on this account.** A later read-only check (October 3, 2026) found an
-> organization-level policy on the demo account that denies some services in us-east-1, for
-> example DynamoDB, Lambda, and Cognito. Listing Bedrock models in us-east-1 is allowed, but
-> whether a model call there is allowed can only be confirmed by a real (paid) call. On a client's
-> own account, check the Bedrock region before deploying.
+> **What is verified and what isn't (October 3, 2026, read-only, no model calls):**
+>
+> - The demo account has an organization-level policy that denies some services in us-east-1,
+>   for example DynamoDB, Lambda, and Cognito. The IAM policy simulator, which includes that
+>   policy, reports `bedrock:InvokeModelWithResponseStream` on Nova Lite as **allowed** in both
+>   us-east-1 and us-east-2.
+> - **Not verified:** that an actual Nova Lite call succeeds in either region. The us-east-2
+>   conclusion rests on the quota listing, not a call. AWS's model page lists us-east-2 as a
+>   source region for the `us.` cross-Region profile.
+> - **Not verified:** the synthesized IAM policy. The backend has never been synthesized or
+>   deployed. A unit test covers the ARN logic only.
+> - On a client's own account, re-check the model's regional availability and quotas before
+>   deploying, and leave `BEDROCK_REGION` empty if the model has in-Region access there.
 
-To change the model, set `BEDROCK_MODEL_ID` (and `BEDROCK_REGION` if needed) before deploying. If you choose a cross-region
-inference profile ID (for example `us.amazon.nova-micro-v1:0`, Paid plan only), also update the
-IAM resources in `amplify/backend.ts` as its comment describes.
+To change the model, set `BEDROCK_MODEL_ID` (and `BEDROCK_REGION` only if needed) before deploying.
 
 Re-check model availability at any time (read-only, no charges):
 
@@ -301,6 +320,7 @@ included are in [COST_ESTIMATE.md](COST_ESTIMATE.md).
 ```
 amplify/                    Amplify Gen 2 backend (prepared, not deployed)
   backend.ts                DynamoDB table, IAM, function URL, Cognito hardening, outputs
+  bedrockAccess.ts          Bedrock IAM resources for a model ID or inference profile in a region
   auth/resource.ts          Cognito user pool (owners only, email sign-in, optional TOTP MFA)
   data/resource.ts          AppSync schema: owner-only custom queries/mutations → owner-api
   storage/resource.ts       Private S3 bucket for owner documents
@@ -350,7 +370,7 @@ aws sts get-caller-identity --profile aws-project
 $env:AWS_REGION = "us-east-2"
 $env:AWS_PROFILE = "aws-project"
 $env:BEDROCK_MODEL_ID = "amazon.nova-lite-v1:0"
-$env:BEDROCK_REGION = "us-east-1"     # Nova Lite has no in-Region quota in us-east-2 on the Free plan
+$env:BEDROCK_REGION = "us-east-1"     # override: Nova Lite showed no in-Region quota in us-east-2 on this Free plan account; omit when the model is in-Region
 # Optional cost circuit breaker; skip on accounts whose Lambda concurrency quota is 10:
 # $env:PUBLIC_CHAT_RESERVED_CONCURRENCY = "5"
 
@@ -422,7 +442,7 @@ Deploy with Git** and connect this GitHub repository. The build uses `amplify.ym
 backend with `ampx pipeline-deploy`, builds the app with `VITE_BACKEND=aws`, then builds and
 size-checks `widget.js`. Before the first build:
 
-- Set the environment variables `BEDROCK_MODEL_ID=amazon.nova-lite-v1:0` and `BEDROCK_REGION=us-east-1`.
+- Set the environment variable `BEDROCK_MODEL_ID=amazon.nova-lite-v1:0`, plus `BEDROCK_REGION=us-east-1` only if the model has no in-Region access in the app's region (as on this demo account).
 - Add a single-page-app rewrite under **Hosting → Rewrites and redirects** so routes like
   `/owner/knowledge` load `index.html`: source
   `</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp|html)$)([^.]+$)/>`,

@@ -9,6 +9,6 @@ export default defineConfig({
   preview: { port: 4173, strictPort: true },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'shared/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'shared/**/*.test.ts', 'amplify/**/*.test.ts'],
   },
 });

@@ -73,6 +73,8 @@ try {
   await page.getByText('An AI support assistant that only answers').waitFor();
   await page.screenshot({ path: `${SHOTS}/home-desktop.png` });
   step('home page renders');
+  const demoBanner = () => page.getByRole('note').filter({ hasText: 'Demo — simulated sign-in, AI, and storage' });
+  if ((await demoBanner().count()) !== 1) throw new Error('Demo banner missing on the home page');
 
   await page.goto(`${BASE}/demo/maple-street-bakery`);
   await page.getByRole('button', { name: 'Chat with Maple Street Bakery' }).click();
@@ -94,6 +96,8 @@ try {
   await signInAs(page, 'Maple Street Bakery');
   await page.screenshot({ path: `${SHOTS}/dashboard-desktop.png` });
   step('demo sign-in as bakery owner');
+  if ((await demoBanner().count()) !== 1) throw new Error('Demo banner missing (or duplicated) on the dashboard');
+  step('demo banner shown once on the home page and the dashboard');
 
   await page.goto(`${BASE}/owner/inquiries`);
   await page.getByText('Smoke Tester').waitFor();

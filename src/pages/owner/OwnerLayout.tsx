@@ -3,7 +3,7 @@ import { Link, NavLink, Navigate, Outlet, useLocation, useOutletContext } from '
 import { useBackend } from '../../backend/context';
 import { OwnerDataProvider, useBusinessQuery, useStatsQuery } from '../../backend/ownerQueries';
 import type { OwnerBusiness, OwnerIdentity } from '../../backend/types';
-import { Button, SimulatedBadge } from '../../components/ui';
+import { Button, DemoBanner, SimulatedBadge } from '../../components/ui';
 
 interface OwnerContext {
   identity: OwnerIdentity;
@@ -141,6 +141,7 @@ function OwnerShell({ identity }: { identity: OwnerIdentity }) {
       )}
 
       <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+        {backend.mode === 'local' && <DemoBanner className="-mx-4 -mt-6 mb-6 sm:-mx-6 lg:-mx-10 lg:-mt-8" />}
         <Outlet context={{ identity, business } satisfies OwnerContext} />
       </main>
     </div>

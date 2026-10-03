@@ -58,6 +58,7 @@ All four recommendations were accepted on October 3, 2026.
    - `amplify/backend.ts`: pass it to the function and use it in the IAM resource ARN, `arn:aws:bedrock:${bedrockRegion}::foundation-model/${modelId}`.
    - `amplify/functions/public-chat/handler.ts`: `new BedrockRuntimeClient({ region: process.env.BEDROCK_REGION })`.
    - Add `bedrockRegion` to the outputs.
+   - *Revised October 3, 2026:* `BEDROCK_REGION` is now an optional override with no hard-coded default. When it is unset, the Lambda and the IAM policy both use the app's deployment region. The deploy steps for this account still set it to `us-east-1` (D1). The IAM resources come from `amplify/bedrockAccess.ts`, which also covers cross-Region inference profile IDs.
 2. **Dashboard data the API doesn't return yet.** The Overview and Conversations pages currently compute statistics from full message lists, but the API returns only summaries.
    - Have `public-chat` keep counters on the conversation item: `firstQuestion`, `visitorMessageCount`, `answeredCount`, `handoffOfferedCount`.
    - Add these fields to `ConversationSummary` in `amplify/data/resource.ts`.
@@ -138,7 +139,7 @@ aws sts get-caller-identity --profile aws-project
 $env:AWS_PROFILE = "aws-project"
 $env:AWS_REGION = "us-east-2"
 $env:BEDROCK_MODEL_ID = "amazon.nova-lite-v1:0"
-$env:BEDROCK_REGION = "us-east-1"          # decision D1, option A
+$env:BEDROCK_REGION = "us-east-1"          # decision D1, option A (override; unset = app region)
 $env:PUBLIC_CHAT_RESERVED_CONCURRENCY = "5" # account limit is 400, so this is safe
 
 # 2. One-time CDK bootstrap of us-east-2 (CREATES RESOURCES)
@@ -228,7 +229,7 @@ aws dynamodb delete-table --table-name $table --region us-east-2 --profile aws-p
 | B11 | Amplify Hosting needs a single-page-app rewrite | **Needs your action** | Console setting with deployment step 9; without it, reloading `/owner/...` returns 404 |
 | B12 | Each business's allowed origins must include the Amplify domain | Work item | Re-run provisioning with `--origins` before owners edit anything; it also resets the profile and sample answers |
 | B13 | Integration test script not written yet | Work item | Step 5 (`scripts/integration.mjs`), written against the sandbox once it exists |
-| B14 | An organization-level policy on the account denies some services in us-east-1 (found October 3, 2026; DynamoDB, Lambda, Cognito, CloudFormation, Amplify listings denied) | Risk | Listing Bedrock models in us-east-1 is allowed, but `InvokeModelWithResponseStream` there is unconfirmed until the first real call (deployment step 6). If it is denied, D1 option A fails on this account. |
+| B14 | An organization-level policy on the account denies some services in us-east-1 (found October 3, 2026; DynamoDB, Lambda, Cognito, CloudFormation, Amplify listings denied) | Risk, reduced | The IAM policy simulator, which includes that policy (DynamoDB in us-east-1 shows as explicitly denied as a control), reports `bedrock:InvokeModelWithResponseStream` on Nova Lite as allowed in us-east-1 and us-east-2. A real call is still the only proof (deployment step 6). |
 
 ## Order of work
 

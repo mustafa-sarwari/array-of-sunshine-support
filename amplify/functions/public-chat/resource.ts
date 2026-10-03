@@ -4,11 +4,11 @@ import { defineFunction } from '@aws-amplify/backend';
 export const DEFAULT_MODEL_ID = 'amazon.nova-lite-v1:0';
 
 /**
- * Bedrock is called in us-east-1 even though the app runs in us-east-2: Nova Lite
- * has in-Region on-demand quotas there, and the AWS Free plan does not allow
- * cross-Region inference profiles. See COST_ESTIMATE.md, "Region note".
+ * Bedrock is called in the app's own region unless BEDROCK_REGION is set. Set it only
+ * when the model has no in-Region on-demand access there, for example Nova Lite from
+ * us-east-2 on the AWS Free plan (README, "Model choice").
  */
-export const DEFAULT_BEDROCK_REGION = 'us-east-1';
+export const BEDROCK_REGION_OVERRIDE = process.env.BEDROCK_REGION?.trim() || undefined;
 
 export const publicChat = defineFunction({
   name: 'public-chat',
@@ -19,7 +19,7 @@ export const publicChat = defineFunction({
   logging: { format: 'json', retention: '1 month' },
   environment: {
     MODEL_ID: process.env.BEDROCK_MODEL_ID ?? DEFAULT_MODEL_ID,
-    BEDROCK_REGION: process.env.BEDROCK_REGION ?? DEFAULT_BEDROCK_REGION,
+    ...(BEDROCK_REGION_OVERRIDE ? { BEDROCK_REGION: BEDROCK_REGION_OVERRIDE } : {}),
     MAX_OUTPUT_TOKENS: '400',
     CONVERSATION_RETENTION_DAYS: '180',
     RATE_LIMIT_PER_MINUTE: '20',
