@@ -1,18 +1,72 @@
 # Cost estimate: Array of Sunshine support assistant (us-east-2)
 
-**Bottom line:** using the recommended model (Amazon Nova Lite), the planned AWS stack costs about
-**$0.65 to $0.80 per month at 10 conversations/day** and **about $2.90 to $3.05 per month at 100
-conversations/day**, before any AWS Free Tier or credits. Adding an AWS WAF firewall in front of
-the public chat endpoint (recommended for production) adds about **$8 per month**, which would
-then be the largest line item.
+**Bottom line**
+
+| | 10 conversations/day | 100 conversations/day |
+|---|---|---|
+| **Estimated AWS usage cost, realistic** | **≈ $0.53 per month** | **≈ $1.75 per month** |
+| Estimated AWS usage cost, conservative upper bound | ≈ $1.62 per month | ≈ $3.83 per month |
+| Add AWS WAF (recommended before a public launch) | + ≈ $8 per month | + ≈ $8 per month |
+| **Out-of-pocket payment today** | **$0** | **$0** |
+
+*Usage cost* is what AWS meters for the resources you use. *Out-of-pocket payment* is what you
+are actually billed after credits. The account is on the AWS **Free plan** with **$100 in credits**,
+so usage is deducted from the credits and nothing is charged to a card (see
+[Account check](#account-check-october-3-2026)). At the realistic rate, $100 of credits covers the
+whole six-month Free plan many times over. With WAF it lasts about 10 to 11 months, which is longer
+than the Free plan itself.
 
 These are planning estimates, not quotes. Prices change. Re-check them with the
 [AWS Pricing Calculator](https://calculator.aws/) before launch.
 
 - **Region:** US East (Ohio), `us-east-2`
-- **Prices retrieved:** October 3, 2026, read-only, from the AWS Price List API (`pricing:GetProducts`) through the AWS MCP server
-- **Currency:** USD. A month is 30 days. Tax, support plans, and domain names are excluded.
-- **Free Tier:** excluded on purpose. AWS Free Tier terms differ by account age and type, so check [aws.amazon.com/free](https://aws.amazon.com/free/).
+- **Prices and account details checked:** October 3, 2026, using read-only APIs through the AWS MCP server. Nothing was created and no model was invoked.
+- **Currency:** USD. A month is 30 days. Tax, support plans, and domain registration are excluded.
+- **Nothing is deployed yet**, so today's actual usage cost is $0.
+
+## Account check (October 3, 2026)
+
+Read-only calls: `freetier:GetAccountPlanState`, `freetier:GetFreeTierUsage`, and
+`budgets:DescribeBudgets`. Cost Explorer was not queried, because each Cost Explorer API request
+costs $0.01.
+
+| Item | Result |
+|---|---|
+| Account plan | **Free plan**, active |
+| Credits remaining | **$100.00**. AWS says new accounts can earn up to $100 more by completing activities in the console. |
+| Free plan ends | **April 3, 2027**, or earlier if the credits run out |
+| Free Tier usage recorded | None yet (nothing deployed) |
+| Budgets and spending alerts | **None configured** |
+| Services this project needs | All available on the Free plan: Bedrock, Lambda, DynamoDB, AppSync, Cognito, S3, Amplify, CloudWatch, CloudFront, WAF, Budgets ([supported services](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html)) |
+
+### What the Free plan means for cost
+
+Sources: [Choosing a plan](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html),
+[AWS Free Tier terms](https://aws.amazon.com/free/terms/), and the
+[Free Tier FAQs](https://aws.amazon.com/free/free-tier-faqs/).
+
+- **While on the Free plan, you are never charged.** Eligible usage is deducted from the credits. Services that could quickly use up the credits (for example Savings Plans, Reserved Instances, and most paid AWS Marketplace offers) aren't available until you upgrade.
+- **When the credits run out or on April 3, 2027 (whichever comes first), the Free plan ends.** The account closes automatically and you lose access to its resources. The chat widget and dashboard would stop working.
+- **You then have 90 days to upgrade to the Paid plan.** After 90 days, AWS permanently deletes the account and everything in it.
+- **If you upgrade to the Paid plan** (at any time), the remaining credits apply automatically to your bills. Free Tier credits expire 12 months after the account was opened, around October 2027 for this account. After the credits are used or expire, you pay standard pay-as-you-go prices, which is the "usage cost" in this document.
+- **Free plan limits that affect this project:**
+  - **Bedrock cross-Region inference profiles aren't supported on the Free plan.** The recommended in-Region model, `amazon.nova-lite-v1:0`, works. Nova Micro, which needs the `us.` cross-Region profile, does not.
+  - **AWS Marketplace is limited to Bedrock and free offers.**
+  - **Joining AWS Organizations or Control Tower automatically upgrades the account** to the Paid plan.
+
+### Always-free allowances (Free and Paid plans)
+
+Verified on the AWS Free Tier and pricing pages on October 3, 2026. The realistic estimate applies them.
+
+| Service | Monthly allowance | Effect here |
+|---|---|---|
+| AWS Lambda | 1 million requests and 400,000 GB-seconds | Covers both functions at these volumes |
+| Amazon Cognito | 10,000 monthly active users (Lite and Essentials) | Covers owner sign-in |
+| Amazon CloudWatch | 5 GB of log ingestion, storage, and Logs Insights scans; 10 alarms; 10 custom metrics; 3 dashboards | Covers logs and the recommended alarms |
+| Amazon DynamoDB | 25 GB of storage; 25 provisioned read and write capacity units | Covers storage. **On-demand requests aren't covered** and are billed (fractions of a cent here). |
+
+Bedrock, AppSync, S3, Amplify Hosting, WAF, and Route 53 have no always-free allowance on this
+plan. Their usage is paid from credits.
 
 ## Official pricing pages
 
@@ -26,7 +80,10 @@ These are planning estimates, not quotes. Prices change. Re-check them with the
 | Amazon S3 | https://aws.amazon.com/s3/pricing/ |
 | AWS Amplify Hosting | https://aws.amazon.com/amplify/pricing/ |
 | Amazon CloudWatch | https://aws.amazon.com/cloudwatch/pricing/ |
+| Amazon Route 53 (optional) | https://aws.amazon.com/route53/pricing/ |
 | AWS WAF (optional) | https://aws.amazon.com/waf/pricing/ |
+| Amazon CloudFront (with WAF) | https://aws.amazon.com/cloudfront/pricing/ |
+| AWS Free Tier | https://aws.amazon.com/free/ |
 | AWS Pricing Calculator | https://calculator.aws/ |
 
 ## Model availability check and recommendation
@@ -37,98 +94,127 @@ On October 3, 2026 I ran read-only `ListFoundationModels` and `ListInferenceProf
 
 | Model | How to call it from us-east-2 | Input / output price per 1M tokens (us-east-2) |
 |---|---|---|
-| **Amazon Nova Lite (recommended)** | Base model ID `amazon.nova-lite-v1:0` (on-demand in-region), or profile `us.amazon.nova-lite-v1:0` | **$0.06 / $0.24** |
-| Amazon Nova Micro (cheapest) | Only through inference profile `us.amazon.nova-micro-v1:0` (US regions) | $0.035 / $0.14 |
-| Amazon Nova 2 Lite | Profile `us.amazon.nova-2-lite-v1:0` or `global.amazon.nova-2-lite-v1:0` | $0.33 / $2.75 (global profile: $0.30 / $2.50) |
-| Anthropic Claude Haiku 4.5 | Profile `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Not returned by the Price List API (sold through AWS Marketplace). See the Bedrock pricing page. |
+| **Amazon Nova Lite (recommended)** | Base model ID `amazon.nova-lite-v1:0` (on-demand in-Region) | **$0.06 / $0.24** |
+| Amazon Nova Micro (cheapest) | Only through inference profile `us.amazon.nova-micro-v1:0`. **Not usable on the Free plan.** | $0.035 / $0.14 |
+| Amazon Nova 2 Lite | Profile `us.amazon.nova-2-lite-v1:0` or `global.amazon.nova-2-lite-v1:0`. **Not usable on the Free plan.** | $0.33 / $2.75 (global profile: $0.30 / $2.50) |
+| Anthropic Claude Haiku 4.5 | Profile `us.anthropic.claude-haiku-4-5-20251001-v1:0`. **Not usable on the Free plan.** | Not returned by the Price List API (sold through AWS Marketplace). See the Bedrock pricing page. |
 
 **Recommendation: Amazon Nova Lite, `amazon.nova-lite-v1:0`.**
 
-- It supports on-demand invocation directly in `us-east-2`, so requests stay in Ohio and the IAM policy needs only one foundation-model ARN.
+- It is the only candidate that runs on-demand directly in `us-east-2`, so it works on the Free plan, requests stay in Ohio, and the IAM policy needs only one foundation-model ARN.
 - The task is narrow: rephrase up to 5 owner-approved answers, or return the handoff sentinel. A small model handles this well, and the backend already refuses to call the model when no approved entry matches.
-- Nova Micro is about 40% cheaper but requires the `us.` cross-region profile, which can route requests to us-east-1 or us-west-2. At this volume, the saving is cents per month.
-- Move up to Nova 2 Lite or Claude Haiku 4.5 only if testing shows Nova Lite's answers are not good enough.
+- After upgrading to the Paid plan, Nova Micro would save a few cents a month. Move up to Nova 2 Lite or Claude Haiku 4.5 only if testing shows Nova Lite's answers are not good enough.
 - **Streaming:** the backend uses the Bedrock Runtime `ConverseStream` API, which the AWS docs list as supported for these models. Lambda needs `bedrock:InvokeModelWithResponseStream`.
 
 ## Usage assumptions
 
-| Assumption | Value | Why |
-|---|---|---|
-| Visitor messages per conversation | **4** | Typical small-business FAQ chats are short |
-| Assistant replies per conversation | **4** (so **8 messages** stored per conversation) | One reply per visitor message |
-| Bedrock calls per conversation | **4** | Conservative. In practice greetings, "talk to a person", and unmatched questions skip the model. |
-| **Input tokens per Bedrock call** | **1,500** | Rules ~250, up to 5 approved entries ~600, up to 6 prior messages ~550, visitor message ~50, overhead ~50 |
-| **Output tokens per Bedrock call** | **150** | Answers are capped at ~90 words. `maxTokens` is set to 400 as a hard ceiling. |
-| Input / output tokens per conversation | 6,000 / 600 | 4 calls × the above |
-| Public Lambda invocations per conversation | 6 | 4 messages (~3 s each at 512 MB) + start + config (~0.2 s each) |
-| Owner dashboard API calls per month | 1,500 (10/day) or 6,000 (100/day) | Owner checks the dashboard a few times a day |
-| Website page views per conversation | 30 | Most visitors never open the chat, but every page loads the widget script |
-| Widget script size | 40 KB compressed | Target for the standalone production widget bundle |
-| Uploaded documents | 1 GB | Menus and price sheets |
-| Deploys per month | 8 builds × 4 minutes | Normal iteration |
+The **realistic** column is the main estimate. The **conservative** column assumes every visitor
+message reaches the model, more builds, Route 53 DNS, and no always-free allowances.
 
-| Monthly volume | 10 conversations/day | 100 conversations/day |
+| Assumption | Realistic | Conservative | Why |
+|---|---|---|---|
+| Visitor messages per conversation | 3 | 4 | Small-business FAQ chats are short |
+| Bedrock calls per conversation | 2 | 4 | Greetings, "talk to a person", and unmatched questions skip the model. About one message in three does. |
+| Input / output tokens per Bedrock call | 1,500 / 150 | 1,500 / 150 | Rules ~250, up to 5 approved entries ~600, up to 6 prior messages ~550, visitor message ~50, overhead ~50. Answers are capped near 90 words; `maxTokens` is 400. |
+| Public Lambda work per conversation | start + config (0.2 s each), model calls 3 s, skipped messages 0.3 s, at 512 MB | same | Model calls dominate the duration |
+| Owner dashboard API calls per month | 1,500 (10/day) or 6,000 (100/day) | same | A few dashboard visits a day |
+| Website page views per conversation | 30 | 30 | Most visitors never open the chat, but every page loads the widget script |
+| Widget script size | 40 KB compressed | same | Target for the standalone widget bundle |
+| Owner dashboard traffic | 0.1 GB per month | same | ~110 KB per dashboard load |
+| Uploaded documents | 1 GB | 1 GB | Menus and price sheets |
+| Amplify builds per month | 4 × 8 minutes | 8 × 8 minutes | Gen 2 builds deploy the backend too, so they take longer than a static site build |
+| Owners signing in | 2 | 10 | The two sample businesses |
+| DNS | Existing provider | Route 53 hosted zone | |
+
+| Monthly volume (realistic) | 10 conversations/day | 100 conversations/day |
 |---|---|---|
 | Conversations | 300 | 3,000 |
-| Messages stored | 2,400 | 24,000 |
-| Bedrock calls | 1,200 | 12,000 |
-| Input tokens | 1.8 million | 18 million |
-| Output tokens | 0.18 million | 1.8 million |
+| Bedrock calls | 600 | 6,000 |
+| Input tokens | 0.9 million | 9 million |
+| Output tokens | 0.09 million | 0.9 million |
+| Public Lambda compute | ~1,000 GB-seconds | ~10,000 GB-seconds |
+| DynamoDB writes / reads | ~4,500 / ~13,000 | ~45,000 / ~84,000 |
+| Website data served | ~0.46 GB | ~3.7 GB |
 
 ## Bedrock model cost only
 
-| Model | 10 conversations/day | 100 conversations/day |
-|---|---|---|
-| Nova Micro ($0.035 / $0.14) | 1.8 × 0.035 + 0.18 × 0.14 = **$0.09** | 18 × 0.035 + 1.8 × 0.14 = **$0.88** |
-| **Nova Lite ($0.06 / $0.24)** | 1.8 × 0.06 + 0.18 × 0.24 = **$0.15** | 18 × 0.06 + 1.8 × 0.24 = **$1.51** |
-| Nova 2 Lite ($0.33 / $2.75) | 1.8 × 0.33 + 0.18 × 2.75 = **$1.09** | 18 × 0.33 + 1.8 × 2.75 = **$10.89** |
+| Model | Realistic, 10/day | Realistic, 100/day | Conservative, 10/day | Conservative, 100/day |
+|---|---|---|---|---|
+| **Nova Lite ($0.06 / $0.24)** | **$0.08** | **$0.76** | $0.15 | $1.51 |
+| Nova Micro ($0.035 / $0.14), Paid plan only | $0.04 | $0.44 | $0.09 | $0.88 |
+| Nova 2 Lite ($0.33 / $2.75), Paid plan only | $0.54 | $5.45 | $1.09 | $10.89 |
 
 ## Full monthly estimate (Nova Lite)
 
-Unit prices below are the us-east-2 prices returned by the Price List API.
+Unit prices are the us-east-2 prices returned by the Price List API. Totals were calculated with a
+script from the unrounded line items.
 
-| Service | Unit prices used | 10 conversations/day | 100 conversations/day |
-|---|---|---|---|
-| Bedrock (Nova Lite) | $0.06 per 1M input tokens, $0.24 per 1M output tokens | $0.15 | $1.51 |
-| Lambda: public chat | $0.0000166667 per GB-second, $0.20 per 1M requests | 1,860 GB-s + 1,800 requests = $0.03 | 18,600 GB-s + 18,000 requests = $0.31 |
-| Lambda: owner API | same | under $0.01 | under $0.01 |
-| Lambda response streaming | $0.008 per GB streamed | under $0.01 | under $0.01 |
-| DynamoDB on-demand | $0.125 per 1M reads, $0.625 per 1M writes; first 25 GB-month of storage $0 | ~15k reads + ~10k writes = $0.01 | ~100k reads + ~100k writes = $0.07 |
-| DynamoDB point-in-time recovery | Per GB-month of table data (under 0.1 GB here) | ~$0.02 | ~$0.02 |
-| AppSync (owner API) | $4.00 per 1M queries and mutations | $0.01 | $0.02 |
-| Cognito (owner sign-in only) | Per monthly active user; tier-1 prices $0.0055 to $0.015 | $0.00 to $0.15 (≤10 owners) | $0.00 to $0.15 |
-| S3 (documents) | $0.023 per GB-month; $0.005 per 1,000 PUTs | $0.02 | $0.02 |
-| Amplify Hosting | $0.01 per build minute; $0.023 per GB stored; $0.15 per GB served | 32 build min + 0.46 GB served = $0.39 | 32 build min + 3.8 GB served = $0.89 |
-| CloudWatch Logs | $0.50 per GB ingested | under $0.01 | $0.02 |
-| **Total (without WAF)** | | **≈ $0.65 to $0.80** | **≈ $2.90 to $3.05** |
+| Service | Unit prices used | Realistic, 10/day | Realistic, 100/day | Conservative, 10/day | Conservative, 100/day |
+|---|---|---|---|---|---|
+| Bedrock (Nova Lite) | $0.06 per 1M input tokens, $0.24 per 1M output tokens | $0.08 | $0.76 | $0.15 | $1.51 |
+| Lambda (both functions, incl. response streaming) | $0.0000166667 per GB-second, $0.20 per 1M requests | $0.00 (always free) | $0.00 (always free) | $0.03 | $0.32 |
+| DynamoDB on-demand requests | $0.125 per 1M reads, $0.625 per 1M writes | under $0.01 | $0.04 | $0.01 | $0.05 |
+| DynamoDB point-in-time recovery | Per GB-month of table data (under 0.1 GB) | $0.02 | $0.02 | $0.02 | $0.02 |
+| AppSync (owner API) | $4.00 per 1M queries and mutations | $0.01 | $0.02 | $0.01 | $0.02 |
+| Cognito (owner sign-in) | Per monthly active user | $0.00 (always free) | $0.00 (always free) | $0.15 | $0.15 |
+| S3 (documents) | $0.023 per GB-month; $0.005 per 1,000 PUTs | $0.02 | $0.02 | $0.02 | $0.02 |
+| Amplify Hosting | $0.01 per build minute; $0.15 per GB served; $0.023 per GB stored | $0.39 | $0.88 | $0.71 | $1.20 |
+| CloudWatch Logs and alarms | $0.50 per GB ingested | $0.00 (always free) | $0.00 (always free) | under $0.01 | $0.01 |
+| CDK bootstrap asset bucket | S3 storage for deployment assets | $0.01 | $0.01 | $0.01 | $0.01 |
+| Route 53 hosted zone | $0.50 per hosted zone | — | — | $0.50 | $0.50 |
+| **Total usage cost (without WAF)** | | **≈ $0.53** | **≈ $1.75** | **≈ $1.62** | **≈ $3.83** |
+| **Total with WAF (≈ $8)** | | ≈ $8.53 | ≈ $9.75 | ≈ $9.62 | ≈ $11.83 |
 
-### Optional but recommended for production: AWS WAF
+### How long $100 of credits lasts
 
-The public chat endpoint is open to the internet by design. Putting Amazon CloudFront plus AWS WAF
-in front of it adds IP rate limiting and managed protections.
-
-| Item | Price (us-east-2) | Monthly |
+| Scenario | Usage over the 6-month Free plan | Credits left at April 3, 2027 |
 |---|---|---|
-| 1 web ACL | $5.00 per web ACL | $5.00 |
-| 3 rules (rate-based, AWS managed common rule set, IP reputation list) | $1.00 per rule | $3.00 |
-| Requests | $0.60 per 1M requests | under $0.10 |
-| **WAF total** | | **≈ $8 per month** |
+| Realistic, 10/day | ≈ $3 | ≈ $97 |
+| Realistic, 100/day | ≈ $11 | ≈ $89 |
+| Realistic, 100/day, with WAF | ≈ $59 | ≈ $41 |
+| Conservative, 100/day, with WAF | ≈ $71 | ≈ $29 |
 
-CloudFront request and data-transfer charges also apply. See the
-[CloudFront pricing page](https://aws.amazon.com/cloudfront/pricing/). Amplify Hosting's
-built-in firewall integration is a separate option, listed at $15.00 per month in the Price List API.
+In every scenario the Free plan ends because of its **date**, not because the credits run out.
+Sustained bot traffic is the only realistic way to exhaust the credits early (see below). Plan to
+upgrade to the Paid plan before April 3, 2027 if the app should keep running.
+
+## Costs not included in the totals
+
+- **Domain registration:** about $10 to $15 per year for a `.com` (Route 53 or another registrar).
+- **CloudFront in front of WAF:** request and data-transfer charges. CloudFront is supported on the Free plan; check its pricing page for current free allowances.
+- **Amplify Hosting firewall:** an alternative to a separate WAF setup, listed at $15.00 per month in the Price List API.
+- **Bedrock Guardrails** (recommended in README step 4): charged per amount of text checked on input and output. Price it on the Bedrock pricing page before enabling it.
+- **Amazon SES** for owner email notifications (README step 8): needed at real volumes, because Cognito's built-in email sender has a low daily limit.
+- **Extra environments:** each `ampx sandbox` and each Amplify branch is a full copy of the backend. They are nearly free when idle, but each adds its own point-in-time recovery and log charges.
+- **Development and testing:** a day of sandbox testing with real model calls costs cents.
+- **Data transfer out of Lambda and S3:** under 0.1 GB per month at these volumes.
+- **Tax and AWS Support plans.**
 
 ## What would change these numbers
 
+- **Abuse or bot traffic is the main cost risk.** The design caps it with:
+  - a per-IP rate limit (20 requests/minute),
+  - 500-character messages,
+  - 40 messages per conversation,
+  - `maxTokens` 400,
+  - an origin allow-list,
+  - and optional reserved concurrency.
+
+  Add WAF and a budget alert before launch.
 - **More approved entries per prompt or longer chats:** input tokens grow linearly. Doubling the prompt to 3,000 tokens roughly doubles the Bedrock line.
-- **Switching models:** Nova 2 Lite is about 7× the Bedrock cost of Nova Lite, and Claude models cost more again. Even so, at 100 conversations/day Nova 2 Lite is about $11 per month.
-- **Abuse or bot traffic:** the main cost risk. The design caps it with a per-IP rate limit (20 requests/minute), 500-character messages, 40 messages per conversation, `maxTokens` 400, an origin allow-list, and optional reserved concurrency. Add WAF and an AWS Budgets alert before launch.
-- **Free Tier or credits:** these could make the non-Bedrock lines $0 in practice.
+- **Switching models (Paid plan only):** Nova 2 Lite costs about 7 times as much as Nova Lite. Even so, it would be about $5 to $11 per month at 100 conversations/day.
+- **Busier development:** each extra 8-minute build adds $0.08.
 
 ## Recommended guardrails
 
-Create a monthly cost budget with an email alert. This creates an AWS resource, so run it only
-when you are ready. Replace `you@example.com` first.
+**No budget is configured** (checked October 3, 2026). Budgets are available on the Free plan, and
+monitoring-only budgets are free. On the Free plan a budget can't stop charges, because there
+aren't any. It still warns you if credits are being used faster than expected. It becomes essential
+after upgrading to the Paid plan.
+
+The command below creates a $10 monthly budget. It emails you when actual spend passes 80% and
+when forecast spend passes 100%. **It creates an AWS resource, so run it only when you're ready.**
+Replace `you@example.com` first.
 
 ```powershell
 @'
@@ -136,11 +222,20 @@ when you are ready. Replace `you@example.com` first.
 '@ | Set-Content -Encoding ascii "$env:TEMP\budget.json"
 
 @'
-[{"Notification":{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":80},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"you@example.com"}]}]
+[{"Notification":{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":80,"ThresholdType":"PERCENTAGE"},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"you@example.com"}]},
+ {"Notification":{"NotificationType":"FORECASTED","ComparisonOperator":"GREATER_THAN","Threshold":100,"ThresholdType":"PERCENTAGE"},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"you@example.com"}]}]
 '@ | Set-Content -Encoding ascii "$env:TEMP\budget-notifications.json"
 
 $accountId = aws sts get-caller-identity --profile aws-project --query Account --output text
-aws budgets create-budget --profile aws-project --account-id $accountId `
+aws budgets create-budget --region us-east-1 --profile aws-project --account-id $accountId `
   --budget "file://$env:TEMP\budget.json" `
   --notifications-with-subscribers "file://$env:TEMP\budget-notifications.json"
+```
+
+Re-check the account plan and credits at any time (read-only, free):
+
+```powershell
+aws freetier get-account-plan-state --region us-east-1 --profile aws-project
+aws budgets describe-budgets --region us-east-1 --profile aws-project `
+  --account-id (aws sts get-caller-identity --profile aws-project --query Account --output text)
 ```

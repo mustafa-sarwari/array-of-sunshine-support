@@ -12,6 +12,7 @@ it keeps each business's data separate, and it costs a few dollars a month to ru
 
 - **Local demo: working.** React 19, TypeScript, Vite 8, Tailwind CSS 4. Data is stored in the browser.
 - **AWS backend: prepared, not deployed.** Amplify Gen 2 with Cognito, AppSync, Lambda, DynamoDB, S3, and Amazon Bedrock (`ConverseStream`). The code is written and type-checked, but no AWS resources have been created and no model calls have been made.
+- **Cost (checked October 3, 2026):** estimated AWS usage of about **$0.53/month at 10 conversations a day** and **$1.75/month at 100 a day** (realistic case), plus about $8/month if AWS WAF is added. **Out-of-pocket cost today is $0.** The AWS account is on the Free plan with $100 in credits. The Free plan ends on April 3, 2027 or when the credits run out, whichever comes first. See [Cost and AWS account](#cost-and-aws-account).
 
 > **Simulated in the local demo:** owner sign-in (no real security) and AI replies (no model is
 > called). Both are labeled in the UI with "Demo sign-in" and "Simulated AI" badges. All data lives
@@ -186,13 +187,12 @@ Amplify Hosting serves the dashboard and widget.js
 Recommended model: **Amazon Nova Lite** (`amazon.nova-lite-v1:0`). On October 3, 2026, read-only
 calls confirmed it is `ACTIVE`, supports on-demand invocation in `us-east-2`, and supports
 streaming. It costs $0.06 per 1M input tokens and $0.24 per 1M output tokens in us-east-2.
-[COST_ESTIMATE.md](COST_ESTIMATE.md) compares alternatives and estimates monthly cost: about
-$0.65 to $0.80 per month at 10 conversations a day, and about $2.90 to $3.05 at 100 a day,
-before an optional AWS WAF (~$8 per month).
+It is also the only candidate that runs in-Region, which matters because the AWS Free plan doesn't
+support cross-Region inference profiles.
 
 To change the model, set `BEDROCK_MODEL_ID` before deploying. If you choose a cross-region
-inference profile ID (for example `us.amazon.nova-micro-v1:0`), also update the IAM resources in
-`amplify/backend.ts` as its comment describes.
+inference profile ID (for example `us.amazon.nova-micro-v1:0`, Paid plan only), also update the
+IAM resources in `amplify/backend.ts` as its comment describes.
 
 Re-check model availability at any time (read-only, no charges):
 
@@ -202,6 +202,25 @@ aws bedrock list-foundation-models --region us-east-2 --profile aws-project `
 aws bedrock list-inference-profiles --region us-east-2 --profile aws-project `
   --query "inferenceProfileSummaries[?contains(inferenceProfileId,'nova')].inferenceProfileId" --output table
 ```
+
+### Cost and AWS account
+
+Checked on October 3, 2026 with read-only AWS calls. Full details, assumptions, and the costs
+not included are in [COST_ESTIMATE.md](COST_ESTIMATE.md).
+
+| | 10 conversations/day | 100 conversations/day |
+|---|---|---|
+| Estimated AWS usage cost, realistic | ≈ $0.53/month | ≈ $1.75/month |
+| Estimated AWS usage cost, conservative upper bound | ≈ $1.62/month | ≈ $3.83/month |
+| With AWS WAF added | + ≈ $8/month | + ≈ $8/month |
+| **Out-of-pocket payment on the Free plan** | **$0** | **$0** |
+
+- **Usage cost vs. payment.** Usage cost is what AWS meters. On the Free plan, it is deducted from the account's $100 in credits, and nothing is charged to a card.
+- **Free plan expiry.** The Free plan ends on **April 3, 2027**, or earlier if the credits run out. The account then closes and the app stops working. You have 90 days to upgrade to the Paid plan before AWS permanently deletes the account and its data.
+- **After upgrading.** Remaining credits apply to bills until about October 2027, which is 12 months after the account was opened. After that, you pay the usage cost.
+- **Credits outlast the Free plan.** At the estimated rates, the credits last longer than the plan in every scenario, so the date is what ends it. Upgrade before April 3, 2027 if the app should keep running.
+- **No budget alert is configured yet.** COST_ESTIMATE.md has the command. Run it before going live or right after upgrading.
+- **Always free.** Lambda, Cognito, and CloudWatch usage at these volumes is within AWS's always-free monthly allowances.
 
 ### Project layout
 
@@ -233,8 +252,8 @@ scripts/provision-business.ts  Links a Cognito owner to a business and loads sam
 ## 4. Deploying to AWS (not run yet)
 
 > **Not run yet.** Every command in this section creates AWS resources or makes paid calls,
-> except the first one. Costs at demo scale are cents per month (see
-> [COST_ESTIMATE.md](COST_ESTIMATE.md)). The commands assume an AWS CLI profile named
+> except the first one. At demo scale, usage costs cents per month, and on the Free plan it is
+> paid from credits (see [Cost and AWS account](#cost-and-aws-account)). The commands assume an AWS CLI profile named
 > `aws-project` that already has credentials (for example from `aws configure sso` or
 > `aws login`). Don't put access keys in this repository; `.env.example` lists the setting
 > names only.
@@ -317,14 +336,15 @@ connect this GitHub repository, and pick region `us-east-2`. Set the `BEDROCK_MO
 3. **Deploy to a sandbox and run integration tests.** The backend has only been type-checked; it has not been synthesized or deployed. Expect to fix small issues on the first `ampx sandbox`. Then test the owner API with two owners, try cross-business access, try visitor-token guessing, and run the rate limiter under load.
 4. **Evaluate answer quality on Bedrock.** Build a test set of approved questions, unapproved questions, and prompt-injection attempts. Tune the retrieval threshold and prompt. Consider Amazon Bedrock Guardrails (prompt-attack filter, denied topics).
 5. **Put CloudFront and AWS WAF in front of the public function URL.** Add a rate-based rule and managed rule groups (~$8/month), plus bot protection or a CAPTCHA on the handoff form.
-6. **Set cost and health alerts.** Add an AWS Budgets alert (command in COST_ESTIMATE.md) and CloudWatch alarms for Lambda errors and throttles and for Bedrock throttling.
-7. **Owner onboarding.** Replace the provisioning script with an admin-only invite flow, and decide how businesses and widget keys are created and rotated.
-8. **Notify owners about new inquiries.** For example, email through Amazon SES. Today inquiries only appear in the dashboard.
-9. **Privacy and compliance.** Add a privacy notice and an "AI assistant" disclosure in the widget. Confirm the 180-day retention period with the business, add a data-deletion process, review whether inquiry PII needs a customer-managed KMS key, and keep visitor text out of logs (handlers currently log only error names).
-10. **Documents.** Uploads are stored privately but are **not** used for answers, by design. If you want it, add an "extract into draft entries" flow that still requires owner approval.
-11. **Custom domain and allowed origins.** Attach the production domain in Amplify Hosting, and update `WIDGET_ALLOWED_ORIGINS` and each business's `allowedOrigins`.
-12. **Accessibility and browser QA.** Run a screen-reader pass and test Safari on iOS (the widget is full screen on phones).
-13. **Dependency hygiene.** See [Dependency audit](#dependency-audit). Re-run `npm audit` after Amplify and CDK releases, and remove the `overrides` in `package.json` once upstream packages ship the fixes.
+6. **Set cost and health alerts.** No budget exists yet. Add an AWS Budgets alert (command in COST_ESTIMATE.md) and CloudWatch alarms for Lambda errors and throttles and for Bedrock throttling.
+7. **Decide on the AWS plan before April 3, 2027.** The account is on the Free plan, which closes the account on that date or when the $100 in credits runs out. Upgrade to the Paid plan to keep the app running. Remaining credits carry over.
+8. **Owner onboarding.** Replace the provisioning script with an admin-only invite flow, and decide how businesses and widget keys are created and rotated.
+9. **Notify owners about new inquiries.** For example, email through Amazon SES. Today inquiries only appear in the dashboard.
+10. **Privacy and compliance.** Add a privacy notice and an "AI assistant" disclosure in the widget. Confirm the 180-day retention period with the business, add a data-deletion process, review whether inquiry PII needs a customer-managed KMS key, and keep visitor text out of logs (handlers currently log only error names).
+11. **Documents.** Uploads are stored privately but are **not** used for answers, by design. If you want it, add an "extract into draft entries" flow that still requires owner approval.
+12. **Custom domain and allowed origins.** Attach the production domain in Amplify Hosting, and update `WIDGET_ALLOWED_ORIGINS` and each business's `allowedOrigins`.
+13. **Accessibility and browser QA.** Run a screen-reader pass and test Safari on iOS (the widget is full screen on phones).
+14. **Dependency hygiene.** See [Dependency audit](#dependency-audit). Re-run `npm audit` after Amplify and CDK releases, and remove the `overrides` in `package.json` once upstream packages ship the fixes.
 
 ### Dependency audit
 
