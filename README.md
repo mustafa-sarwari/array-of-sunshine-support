@@ -1,17 +1,22 @@
 # Array of Sunshine: AI customer-support assistant
 
-A customer-support assistant for small businesses. Owners manage **approved** FAQs and service
-information in a dashboard. Visitors chat through a floating widget on the business's website.
-The assistant answers **only** from approved information. For anything else, it offers to hand the
-question to a person, and the question lands in the owner's unanswered-question inbox.
+**A portfolio demo.** This repository shows a customer-support assistant for small businesses: a
+working browser demo with fictional businesses, plus an AWS backend that is written but has never
+been deployed. It is not a hosted product, and nothing here is running on AWS.
 
-The goal is a support bot a small business can trust: it never invents prices, hours, or policies,
-it keeps each business's data separate, and it costs a few dollars a month to run on AWS.
+Owners manage **approved** FAQs and service information in a dashboard. Visitors chat through a
+floating widget on the business's website. The assistant answers **only** from approved
+information. For anything else, it offers to hand the question to a person, and the question lands
+in the owner's unanswered-question inbox.
+
+The design goal is a support bot a small business can trust: it never invents prices, hours, or
+policies, it keeps each business's data separate, and it is estimated (not measured) to cost a few
+dollars a month to run on AWS.
 
 **Status (October 3, 2026)**
 
 - **Local demo: working.** React 19, TypeScript, Vite 8, Tailwind CSS 4. Data is stored in the browser.
-- **AWS backend: prepared, not deployed.** Amplify Gen 2 with Cognito, AppSync, Lambda, DynamoDB, S3, and Amazon Bedrock (`ConverseStream`). The code is written and type-checked, but no AWS resources have been created and no model calls have been made.
+- **AWS backend: prepared, never deployed.** Amplify Gen 2 with Cognito, AppSync, Lambda, DynamoDB, S3, and Amazon Bedrock (`ConverseStream`). The code is written and type-checked, but it has never been synthesized or deployed, and no model calls have been made. A read-only check of the AWS account on October 3, 2026 found no CloudFormation stacks (including recently deleted ones), Amplify apps, Cognito user pools, DynamoDB tables, Lambda functions, or S3 buckets.
 - **Frontend AWS mode: written, not yet run against AWS.** A build with `VITE_BACKEND=aws` uses Cognito sign-in, the AppSync owner API, and the streaming public chat URL instead of the browser demo. It needs a deployed backend (`amplify_outputs.json`) before it can be tried.
 - **Standalone `widget.js`: working.** One script tag embeds the chat on any website. It renders in a Shadow DOM, uses Preact, and is about 16 KB gzipped. The smoke test runs it against a mocked chat endpoint.
 - **Cost (checked October 3, 2026):** estimated AWS usage of about **$0.53/month at 10 conversations a day** and **$1.75/month at 100 a day** (realistic case), plus about $8/month if AWS WAF is added. **Out-of-pocket cost today is $0.** The AWS account is on the Free plan with $100 in credits. The Free plan ends on April 3, 2027 or when the credits run out, whichever comes first. See [Cost and AWS account](#cost-and-aws-account).
@@ -19,6 +24,35 @@ it keeps each business's data separate, and it costs a few dollars a month to ru
 > **Simulated in the local demo:** owner sign-in (no real security) and AI replies (no model is
 > called). Both are labeled in the UI with "Demo sign-in" and "Simulated AI" badges. All data lives
 > in your browser's `localStorage`. The businesses, people, emails, and phone numbers are fictional.
+
+### What is real and what is simulated
+
+| Part | State |
+|---|---|
+| Dashboard and widget UI, phone and desktop layouts | **Real and working** in the local demo |
+| Answer matching against approved entries (`shared/retrieval.ts`) | **Real.** The same code is used by the demo and the Lambda. |
+| Per-business data separation and visitor tokens | **Real in the local demo's API contract.** Enforced in the browser only, so it is not a security boundary there. |
+| Standalone `widget.js` (Shadow DOM, Preact) | **Real build.** Tested only against a mocked chat endpoint. |
+| Owner sign-in | **Simulated** in the demo. The Cognito version is written but has never run. |
+| AI replies | **Simulated** in the demo: the approved text is streamed back. The Bedrock version is written but has never been called. |
+| Data storage | **Simulated** with browser `localStorage`. The DynamoDB and S3 versions are written but have never run. |
+| Inquiry notification emails, budget alerts, WAF, integration tests | **Not built yet** (see [Remaining work](#5-remaining-work-before-production)) |
+
+## Customization service
+
+I can adapt this assistant for a small business, for example a bakery, salon, repair shop, or
+clinic front desk:
+
+- Load the business's FAQs, hours, prices, and policies as approved answers, and set up its branding.
+- Deploy the backend **into the client's own AWS account**, connect owner sign-in, and run the
+  integration tests that this demo doesn't have yet.
+- Embed the widget on the client's website and show the owner how to use the dashboard.
+- Make changes to fit the business, such as extra fields, handoff routing, or inquiry emails.
+
+**Hosting and AI costs.** Real AWS hosting and AI model usage run in the client's AWS account and
+are billed by AWS to the client, within a monthly budget agreed in writing before deployment. An
+AWS Budgets alert is set at that amount. Development work is quoted separately. The cost figures in
+this README are estimates for a demo-sized workload, not a quote.
 
 ![Widget answering from approved info and offering a handoff](docs/screenshots/widget-desktop.png)
 
@@ -221,6 +255,12 @@ $0.24 per 1M output tokens.
 > call only. See the
 > [region note in COST_ESTIMATE.md](COST_ESTIMATE.md#region-note-nova-lite-in-us-east-2-on-the-free-plan-decided-option-a)
 > for the other options that were considered.
+>
+> **Unverified on this account.** A later read-only check (October 3, 2026) found an
+> organization-level policy on the demo account that denies some services in us-east-1, for
+> example DynamoDB, Lambda, and Cognito. Listing Bedrock models in us-east-1 is allowed, but
+> whether a model call there is allowed can only be confirmed by a real (paid) call. On a client's
+> own account, check the Bedrock region before deploying.
 
 To change the model, set `BEDROCK_MODEL_ID` (and `BEDROCK_REGION` if needed) before deploying. If you choose a cross-region
 inference profile ID (for example `us.amazon.nova-micro-v1:0`, Paid plan only), also update the
@@ -237,8 +277,10 @@ aws bedrock list-inference-profiles --region us-east-2 --profile aws-project `
 
 ### Cost and AWS account
 
-Checked on October 3, 2026 with read-only AWS calls. Full details, assumptions, and the costs
-not included are in [COST_ESTIMATE.md](COST_ESTIMATE.md).
+These figures describe the demo's own AWS account and were checked on October 3, 2026 with
+read-only AWS calls. For client work, the same usage costs fall on the client's AWS account (see
+[Customization service](#customization-service)). Full details, assumptions, and the costs not
+included are in [COST_ESTIMATE.md](COST_ESTIMATE.md).
 
 | | 10 conversations/day | 100 conversations/day |
 |---|---|---|
@@ -396,7 +438,7 @@ The embed snippet on the **Widget & profile** page then points at
 
 ## 5. Remaining work before production
 
-1. **Deploy to a sandbox and run integration tests.** The backend has only been type-checked, and the AWS-mode frontend has only been built; neither has run against AWS. Expect to fix small issues on the first `ampx sandbox`. Then sign in through Cognito, test the owner API with two owners, try cross-business access, try visitor-token guessing, run the rate limiter under load, and use `widget-test.html` against the real chat URL.
+1. **Deploy to a sandbox and run integration tests.** The backend has only been type-checked, and the AWS-mode frontend has only been built; neither has run against AWS. Expect to fix small issues on the first `ampx sandbox`. The integration test script (`npm run test:integration`) hasn't been written yet. Then sign in through Cognito, test the owner API with two owners, try cross-business access, try visitor-token guessing, run the rate limiter under load, and use `widget-test.html` against the real chat URL. Also confirm the Bedrock call works in the chosen region (see [Model choice](#model-choice)).
 2. **Widget follow-ups.** `widget.js` fetches the widget config on page load (cached for 5 minutes per tab) so the launcher can use the brand color, but it only restores a saved conversation when the visitor opens the chat. Consider a CloudFront cache for the config and a versioned file name for long-lived caching of the script.
 3. **Conversation search at scale.** The dashboard lists conversations 50 at a time and filters and searches only the pages already loaded (by first question, visitor label, and page). Add server-side filters if a business gets thousands of chats.
 4. **Evaluate answer quality on Bedrock.** Build a test set of approved questions, unapproved questions, and prompt-injection attempts. Tune the retrieval threshold and prompt. Consider Amazon Bedrock Guardrails (prompt-attack filter, denied topics).

@@ -228,6 +228,7 @@ aws dynamodb delete-table --table-name $table --region us-east-2 --profile aws-p
 | B11 | Amplify Hosting needs a single-page-app rewrite | **Needs your action** | Console setting with deployment step 9; without it, reloading `/owner/...` returns 404 |
 | B12 | Each business's allowed origins must include the Amplify domain | Work item | Re-run provisioning with `--origins` before owners edit anything; it also resets the profile and sample answers |
 | B13 | Integration test script not written yet | Work item | Step 5 (`scripts/integration.mjs`), written against the sandbox once it exists |
+| B14 | An organization-level policy on the account denies some services in us-east-1 (found October 3, 2026; DynamoDB, Lambda, Cognito, CloudFormation, Amplify listings denied) | Risk | Listing Bedrock models in us-east-1 is allowed, but `InvokeModelWithResponseStream` there is unconfirmed until the first real call (deployment step 6). If it is denied, D1 option A fails on this account. |
 
 ## Order of work
 
