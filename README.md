@@ -8,20 +8,19 @@ on inquiries. Visitors use a chat widget that answers from approved information 
 The assistant uses deterministic FAQ matching, not a generative AI model. Real authentication and
 server-side persistence are implemented. This is a local portfolio application, not a production-hosted service.
 
-## Screenshots
+## Local demo
 
-Captured in Microsoft Edge using the real Node.js API and SQLite backend with fictional sample data.
+Captured with the real Node.js API and SQLite database using fictional sample data. No cloud services or AI model calls are used.
 
-**Customer chat: approved answers and human handoff**
+[Watch the short FAQ-to-handoff walkthrough](docs/demos/walkthrough.mp4) · [Repeat the walkthrough](docs/DEMO.md)
 
-![Server-backed chat answering an approved FAQ and offering human handoff for an unknown question](docs/screenshots/server-widget-1366.png)
+**Visitor: approved answer followed by a human handoff**
 
-<details>
-<summary><strong>Owner dashboard: managing approved answers</strong></summary>
+![Server-backed widget answering an approved FAQ and collecting a handoff](docs/screenshots/portfolio-widget.png)
 
-![Authenticated owner dashboard showing approved FAQs, drafts, editing controls, and answer preview](docs/screenshots/server-knowledge-1366.png)
+**Owner: the saved customer inquiry after a refresh**
 
-</details>
+![Authenticated owner dashboard displaying the persisted handoff inquiry](docs/screenshots/portfolio-inquiry.png)
 
 ## Run on Windows PowerShell
 

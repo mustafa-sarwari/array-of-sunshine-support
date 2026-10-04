@@ -2,7 +2,7 @@
   "name": "array-of-sunshine-support",
   "private": true,
   "version": "0.1.0",
-  "description": "AI customer-support widget and owner dashboard (local demo + Amplify Gen 2 backend prep) for the Array of Sunshine project.",
+  "description": "Full-stack customer-support portfolio app with React/TypeScript, a Node HTTP API, SQLite accounts and FAQ matching; optional undeployed AWS backend scaffold.",
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
