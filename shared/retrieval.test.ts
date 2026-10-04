@@ -34,6 +34,29 @@ describe('retrieveApproved', () => {
     },
   );
 
+  it.each(['Do you have keto cakes?', 'Are you open on Christmas?', 'Do you have sugar-free cupcakes?', 'Are you open on Easter Sunday?'])(
+    'hands off %j: the qualifier is in no approved entry',
+    (q) => {
+      expect(retrieveApproved(maple, q)).toEqual([]);
+    },
+  );
+
+  it('still answers ordinary cake and hours questions', () => {
+    expect(topId(maple, 'Do you have cakes?')).toBe('kb_maple_custom_cakes');
+    expect(topId(maple, 'What are your opening hours?')).toBe('kb_maple_hours');
+  });
+
+  it('answers a qualified question when an approved entry covers the qualifier', () => {
+    const christmas = { ...maple.find((k) => k.id === 'kb_maple_hours')!, id: 'kb_xmas', question: 'Christmas hours', answer: 'We close at noon on Christmas Eve and are closed on Christmas Day.', keywords: ['christmas', 'open'] };
+    expect(topId([...maple, christmas], 'Are you open on Christmas?')).toBe('kb_xmas');
+  });
+
+  it('does not treat different holidays as the same question', () => {
+    const approved = maple.map((k) => (k.id === 'kb_maple_holiday' ? { ...k, status: 'approved' as const } : k));
+    expect(topId(approved, 'Can I preorder a Thanksgiving pie?')).toBe('kb_maple_holiday');
+    expect(retrieveApproved(approved, 'Are you open on Easter?')).toEqual([]);
+  });
+
   it('never uses draft entries', () => {
     expect(maple.find((k) => k.id === 'kb_maple_holiday')?.status).toBe('draft');
     expect(retrieveApproved(maple, 'Can I preorder a Thanksgiving pie?').map((m) => m.item.id)).not.toContain('kb_maple_holiday');
@@ -52,6 +75,18 @@ describe('detectIntent', () => {
     expect(detectIntent('thank you so much')).toBe('thanks');
     expect(detectIntent('Can I talk to a real person?')).toBe('human');
     expect(detectIntent('Do you deliver?')).toBe('question');
+  });
+
+  it.each(['hi mustafa', 'Hi Mustafa!', 'Good morning, Rosa', 'hello there'])('treats %j as a greeting', (t) => {
+    expect(detectIntent(t)).toBe('greeting');
+  });
+
+  it.each(['thanks mustafa', 'Thank you so much, Rosa!', 'thanks a lot'])('treats %j as thanks', (t) => {
+    expect(detectIntent(t)).toBe('thanks');
+  });
+
+  it.each(['hi, are you open on Sunday?', 'hello, do you have keto cakes', 'thanks, do you deliver?', 'hi delivery', 'hey parking', 'thanks pricing'])('treats %j as a question', (t) => {
+    expect(detectIntent(t)).toBe('question');
   });
 });
 

@@ -59,6 +59,20 @@ describe('owner API derives the business from identity', () => {
     expect(saved.businessId).toBe(MAPLE_ID);
     expect(getDb().unanswered.find((u) => u.id === 'unq_maple_001')?.status).toBe('resolved');
   });
+
+  it('keeps a question open while its answer is a draft, and resolves it on approval', () => {
+    const input = { kind: 'faq' as const, question: 'Do you offer baking classes?', answer: 'Kids baking classes run monthly.', keywords: ['class'], status: 'draft' as const };
+    const draft = owner.saveKnowledge(mapleOwner, input, undefined, 'unq_maple_001');
+    const q = () => getDb().unanswered.find((u) => u.id === 'unq_maple_001')!;
+    expect(q().status).toBe('open');
+
+    owner.saveKnowledge(mapleOwner, { ...input, answer: 'Kids baking classes run monthly. Edited.' }, draft.id);
+    expect(q().status).toBe('open');
+
+    owner.saveKnowledge(mapleOwner, { ...input, status: 'approved' }, draft.id);
+    expect(q().status).toBe('resolved');
+    expect(q().resolvedKnowledgeId).toBe(draft.id);
+  });
 });
 
 describe('public widget API', () => {
@@ -72,6 +86,23 @@ describe('public widget API', () => {
     expect(b.outcome).toBe('handoff_offered');
     expect(b.reply).not.toContain('$75');
     expect(getDb().unanswered.some((u) => u.businessId === MAPLE_ID && u.question === 'How much is a tune-up?')).toBe(true);
+  });
+
+  it.each(['Do you have keto cakes?', 'Are you open on Christmas?'])('hands off %j instead of answering with general info', async (question) => {
+    const ref = pub.startConversation(MAPLE_KEY);
+    const r = await ask(MAPLE_KEY, ref, question);
+    expect(r.outcome).toBe('handoff_offered');
+    expect(r.reply).not.toContain('Sunday 8:00 am');
+    const open = getDb().unanswered.filter((u) => u.businessId === MAPLE_ID && u.status === 'open' && u.question === question);
+    expect(open).toHaveLength(1);
+  });
+
+  it('greets "hi mustafa" without a handoff or an unanswered question', async () => {
+    const ref = pub.startConversation(MAPLE_KEY);
+    const before = getDb().unanswered.length;
+    const r = await ask(MAPLE_KEY, ref, 'hi mustafa');
+    expect(r.outcome).toBe('smalltalk');
+    expect(getDb().unanswered.length).toBe(before);
   });
 
   it('only lets a visitor read their own conversation', async () => {

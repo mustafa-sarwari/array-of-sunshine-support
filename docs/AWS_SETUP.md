@@ -51,9 +51,10 @@ clinic front desk:
 - Make changes to fit the business, such as extra fields, handoff routing, or inquiry emails.
 
 **Hosting and AI costs.** Real AWS hosting and AI model usage run in the client's AWS account and
-are billed by AWS to the client, within a monthly budget agreed in writing before deployment. An
-AWS Budgets alert is set at that amount. Development work is a fixed quote agreed before work
-begins. The cost figures in this README are estimates for a demo-sized workload, not a quote.
+are billed by AWS to the client, against a monthly budget agreed in writing before deployment.
+AWS Budgets sends email alerts at that amount; it does not cap spending, and AWS bills for all
+usage. The app's rate and size limits reduce cost risk but don't guarantee a maximum.
+Development work is a fixed quote agreed before work begins. The cost figures in this README are estimates for a demo-sized workload, not a quote.
 
 See [docs/CLIENT_OFFER.md](docs/CLIENT_OFFER.md) for the full offer and
 [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) for a two-minute client demonstration.

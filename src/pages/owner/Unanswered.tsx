@@ -50,7 +50,10 @@ export default function Unanswered() {
           <Card className="overflow-hidden">
             <ul className="divide-y divide-slate-100">
               {items.map((u) => {
-                const linked = u.resolvedKnowledgeId ? knowledge.find((k) => k.id === u.resolvedKnowledgeId) : undefined;
+                const linkedEntry = u.resolvedKnowledgeId ? knowledge.find((k) => k.id === u.resolvedKnowledgeId) : undefined;
+                // An open question keeps the id of a draft written for it until that draft is approved.
+                const draft = u.status === 'open' && linkedEntry?.status === 'draft' ? linkedEntry : undefined;
+                const linked = u.status === 'resolved' ? linkedEntry : undefined;
                 return (
                   <li key={u.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
@@ -71,17 +74,29 @@ export default function Unanswered() {
                             <Badge tone="green">Answered by &ldquo;{linked.question}&rdquo;</Badge>
                           </>
                         )}
+                        {draft && (
+                          <>
+                            {' · '}
+                            <Badge tone="amber">Draft answer waiting for approval</Badge>
+                          </>
+                        )}
                       </p>
                     </div>
                     <div className="flex shrink-0 gap-2">
                       {u.status === 'open' ? (
                         <>
-                          <Button
-                            size="sm"
-                            onClick={() => navigate(`/owner/knowledge?question=${encodeURIComponent(u.question)}&unanswered=${encodeURIComponent(u.id)}`)}
-                          >
-                            Write approved answer
-                          </Button>
+                          {draft ? (
+                            <Button size="sm" onClick={() => navigate(`/owner/knowledge?edit=${encodeURIComponent(draft.id)}`)}>
+                              Review draft answer
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => navigate(`/owner/knowledge?question=${encodeURIComponent(u.question)}&unanswered=${encodeURIComponent(u.id)}`)}
+                            >
+                              Write approved answer
+                            </Button>
+                          )}
                           <Button variant="secondary" size="sm" disabled={setStatus.isPending} onClick={() => setStatus.mutate({ id: u.id, status: 'dismissed' })}>
                             Dismiss
                           </Button>

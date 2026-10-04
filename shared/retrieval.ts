@@ -58,7 +58,6 @@ const SYNONYM_GROUPS: string[][] = [
   ['location', 'locat', 'address', 'direction'],
   ['phone', 'call', 'number'],
   ['email', 'mail'],
-  ['holiday', 'thanksgiving', 'christmas', 'easter'],
   ['wholesale', 'restaurant', 'cafe', 'bulk'],
   ['repair', 'fix', 'broken', 'flat'],
   ['rental', 'rent', 'hire'],
@@ -165,11 +164,20 @@ export function retrieveApproved<T extends KnowledgeEntry>(
 const HUMAN_PATTERN =
   /\b(human|real person|a person|someone|staff|employee|manager|owner|representative|agent|talk to|speak (to|with)|call me|contact (you|the team|someone)|reach (you|someone))\b/;
 
+const GREETING = /^(hi|hello|hey|hiya|howdy|good (morning|afternoon|evening))(?: there| (?<name>[a-z]{2,20}))?$/;
+const THANKS = /^(thanks|thank you|thx|ty|cheers|great thanks|ok thanks|perfect thanks)( (so much|a lot))?(?: (?<name>[a-z]{2,20}))?$/;
+
+/** "hi mustafa" is a greeting; "hi delivery" is a terse question about a known topic. */
+function isPolite(pattern: RegExp, t: string): boolean {
+  const groups = pattern.exec(t)?.groups;
+  return groups !== undefined && !(groups.name && CANONICAL.has(stem(groups.name)));
+}
+
 export function detectIntent(text: string): MessageIntent {
   const t = normalizeText(text);
   if (!t) return 'question';
   if (HUMAN_PATTERN.test(t)) return 'human';
-  if (/^(hi|hello|hey|hiya|howdy|good (morning|afternoon|evening))( there| [a-z]{2,20})?$/.test(t)) return 'greeting';
-  if (/^(thanks|thank you|thx|ty|cheers|great thanks|ok thanks|perfect thanks)( (so much|a lot))?$/.test(t)) return 'thanks';
+  if (isPolite(GREETING, t)) return 'greeting';
+  if (isPolite(THANKS, t)) return 'thanks';
   return 'question';
 }

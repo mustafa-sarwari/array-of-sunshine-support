@@ -91,6 +91,23 @@ async function setStatus(key: { PK: string; SK: string }, status: string) {
   }
 }
 
+async function updateUnanswered(businessId: string, id: string, UpdateExpression: string, values: Record<string, unknown>) {
+  await ddb
+    .send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: keys.unanswered(businessId, id),
+        ConditionExpression: 'attribute_exists(PK)',
+        UpdateExpression,
+        ...(UpdateExpression.includes('#s') ? { ExpressionAttributeNames: { '#s': 'status' } } : {}),
+        ExpressionAttributeValues: values,
+      }),
+    )
+    .catch((e: Error) => {
+      if (e.name !== 'ConditionalCheckFailedException') throw e;
+    });
+}
+
 const byNewest = (field: string) => (a: Record<string, unknown>, b: Record<string, unknown>) =>
   String(b[field] ?? '').localeCompare(String(a[field] ?? ''));
 
@@ -180,23 +197,18 @@ const operations: Record<string, (businessId: string, args: Args) => Promise<unk
     if (item.answer.length < 10) throw new UserError('Answer is too short.');
     await ddb.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
 
+    // A draft written for a question is linked to it but leaves it open (same rule as
+    // src/lib/ownerApi.ts). Approving that entry later resolves every question linked to it.
     const resolves = str(args, 'resolvesUnansweredId', 64, false);
-    if (resolves && item.status === 'approved') {
-      await ddb
-        .send(
-          new UpdateCommand({
-            TableName: TABLE_NAME,
-            Key: keys.unanswered(businessId, resolves),
-            ConditionExpression: 'attribute_exists(PK)',
-            UpdateExpression: 'SET #s = :s, resolvedKnowledgeId = :k',
-            ExpressionAttributeNames: { '#s': 'status' },
-            ExpressionAttributeValues: { ':s': 'resolved', ':k': id },
-          }),
-        )
-        .catch((e: Error) => {
-          if (e.name !== 'ConditionalCheckFailedException') throw e;
-        });
+    const approved = item.status === 'approved';
+    const toResolve = new Set<string>(approved && resolves ? [resolves] : []);
+    if (approved && str(args, 'id', 64, false)) {
+      for (const q of await queryPrefix(businessId, 'UNQ#')) if (q.resolvedKnowledgeId === id) toResolve.add(String(q.id));
     }
+    for (const unqId of toResolve) {
+      await updateUnanswered(businessId, unqId, 'SET #s = :s, resolvedKnowledgeId = :k', { ':s': 'resolved', ':k': id });
+    }
+    if (resolves && !approved) await updateUnanswered(businessId, resolves, 'SET resolvedKnowledgeId = :k', { ':k': id });
     return stripKeys(item);
   },
 

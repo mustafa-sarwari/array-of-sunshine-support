@@ -183,6 +183,10 @@ try {
   await m.screenshot({ path: `${SHOTS}/widget-mobile.png` });
   step('mobile widget opens full screen and answers');
 
+  await ask(m, 'hi mustafa', /What would you like to know\?/);
+  await ask(m, 'Are you open on Christmas?', /don.t have approved information/);
+  step('greeting gets small talk; an unsupported holiday question is handed off');
+
   await signInAs(m, 'Maple Street Bakery');
   await m.getByRole('button', { name: 'Open menu' }).click();
   await m.screenshot({ path: `${SHOTS}/dashboard-menu-mobile.png` });

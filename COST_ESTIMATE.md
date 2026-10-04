@@ -236,7 +236,8 @@ upgrade to the Paid plan before April 3, 2027 if the app should keep running.
 **No budget is configured** (checked October 3, 2026). Budgets are available on the Free plan, and
 monitoring-only budgets are free. On the Free plan a budget can't stop charges, because there
 aren't any. It still warns you if credits are being used faster than expected. It becomes essential
-after upgrading to the Paid plan.
+after upgrading to the Paid plan. Even then, a budget only sends alerts: it is not a spending cap,
+AWS bills for all usage, and budget data can lag by several hours.
 
 The command below creates a $10 monthly budget. It emails you when actual spend passes 80% and
 when forecast spend passes 100%. **It creates an AWS resource, so run it only when you're ready.**

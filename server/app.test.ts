@@ -59,3 +59,15 @@ test('real HTTP authentication, tenant isolation, FAQ CRUD, chat handoff, persis
     assert.equal((await owner('listKnowledge')).status,401);
   } finally {await app.close();rmSync(folder,{recursive:true,force:true});}
 });
+
+test('serves the frontend on every OS and blocks path traversal',async()=>{
+  const folder=mkdtempSync(join(tmpdir(),'support-test-'));
+  const app=createApp({database:join(folder,'test.sqlite'),quiet:true});
+  await new Promise<void>(r=>app.server.listen(0,'127.0.0.1',r));
+  const base=`http://127.0.0.1:${(app.server.address() as {port:number}).port}`;
+  try {
+    for(const path of ['/','/owner/knowledge']) assert.notEqual((await fetch(base+path)).status,403,path);
+    assert.equal((await fetch(base+'/..%2Fpackage.json')).status,403);
+    assert.equal((await fetch(base+'/..%5Cpackage.json')).status,403);
+  } finally {await app.close();rmSync(folder,{recursive:true,force:true});}
+});

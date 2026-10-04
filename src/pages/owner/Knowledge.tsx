@@ -42,6 +42,14 @@ export default function Knowledge() {
     }
   }, [params, setParams]);
 
+  const editId = params.get('edit');
+  useEffect(() => {
+    if (!editId || !knowledgeQuery.isSuccess) return;
+    const item = items.find((k) => k.id === editId);
+    if (item) openEdit(item);
+    setParams({}, { replace: true });
+  }, [editId, items, knowledgeQuery.isSuccess, setParams]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter(

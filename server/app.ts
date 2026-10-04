@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'node:crypto';
 import { mkdirSync, existsSync, readFileSync } from 'node:fs';
-import { dirname, resolve, extname } from 'node:path';
+import { dirname, resolve, extname, sep } from 'node:path';
 import { buildSeed } from '../src/lib/seed';
 import { __setDbForTests, getDb, subscribeDb } from '../src/lib/db';
 import { createLocalOwnerData } from '../src/backend/local/ownerData';
@@ -144,8 +144,9 @@ export function createApp(options: { database?: string; testPasswords?: Record<s
       }
       if(path.startsWith('/api/')) throw new HttpError(404,'Not found.');
       if(req.method!=='GET') throw new HttpError(405,'Method not allowed.');
-      const file=resolve('dist','.'+decodeURIComponent(path));
-      if(!file.startsWith(resolve('dist')+'/')) throw new HttpError(403,'Not allowed.');
+      const root=resolve('dist');
+      const file=resolve(root,'.'+decodeURIComponent(path));
+      if(file!==root && !file.startsWith(root+sep)) throw new HttpError(403,'Not allowed.');
       const asset=existsSync(file) && extname(file) ? file : resolve('dist/index.html');
       if(!existsSync(asset)) throw new HttpError(404,'Build the frontend first: npm run build');
       const mime:Record<string,string>={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png'};
