@@ -126,11 +126,20 @@ $env:BASE_URL = "http://localhost:3001"
 $env:MAPLE_PASSWORD = "your-first-run-bakery-password"
 $env:HARBOR_PASSWORD = "your-first-run-bike-shop-password"
 npm run smoke:server
+npm run smoke:accounts
 ```
 
+`smoke:server` covers sign-in, FAQ CRUD, widget answers and handoffs, tenant isolation, and the
+draft-then-approve flow for unanswered questions. It pauses for a minute midway because the server
+allows 120 API requests per minute per address. `smoke:accounts` registers a new fictional business
+on every run and checks sign-in, password change, and recovery-code reset; run it against a
+throwaway database (set `DATABASE_PATH` before `npm start`). Both write `docs/screenshots/server-*.png`.
+
+On October 4, 2026, `npm run check`, `smoke:server`, `smoke:accounts`, and `record:demo` passed in
+Microsoft Edge on Windows against a fresh temporary SQLite database, at 1366 px and 390 px widths.
+
 The historical `npm run smoke` is for the optional browser-only demo, not the default full-stack app.
-An independent review ran the type checks, unit tests, HTTP integration tests and builds; browser
-verification of this new mode is provided as a script and must be run on a machine with Edge.
+Build it with `VITE_BACKEND=local` and serve it with `npm run preview` first.
 
 ## Optional modes and AWS scaffold
 
@@ -155,8 +164,8 @@ See [AWS setup notes](docs/AWS_SETUP.md), [cost estimate](COST_ESTIMATE.md), and
 FAQ matching is conservative and can reject unfamiliar wording; it does not provide general AI reasoning.
 The application is intended for local portfolio use. Public production use needs HTTPS, secure cookies,
 monitoring, retention controls for inquiries, privacy documentation, and a deployment/security review.
-Sample seed records are fictional. Existing screenshots show the earlier browser-only demo and are not
-proof that the new server mode passed browser tests. No AWS spending was authorized or performed.
+Sample seed records are fictional. Screenshots named `server-*.png` come from the real server mode;
+the others show the earlier browser-only demo. No AWS spending was authorized or performed.
 
 ## Account and storage upgrade
 
@@ -186,10 +195,12 @@ Remove-Item Env:MAPLE_PASSWORD, Env:HARBOR_PASSWORD -ErrorAction SilentlyContinu
 
 The smoke test writes `docs/screenshots/server-*.png` from real server mode. The recording writes
 `docs/videos/server-demo.webm`, a silent two-minute walkthrough. Both commands require Microsoft Edge.
-The recording adds a fictional FAQ and inquiry to your local data. Review captures before publishing;
-never record real customers or passwords. Existing screenshots without the `server-` prefix show the
-old simulated browser demo. Fresh captures have not been generated in the coding environment because
-its browser download is blocked. Do not present old images as proof of the real backend.
+Both add fictional FAQs and inquiries to whichever database the server uses. To keep your own data
+unchanged, start the server with a throwaway database first, for example
+`$env:DATABASE_PATH = "$env:TEMP\support-capture.sqlite"; npm start`, and use the passwords it prints.
+Review captures before publishing; never record real customers or passwords. Existing screenshots
+without the `server-` prefix show the old simulated browser demo. The `server-*.png` screenshots and
+a local `server-demo.webm` were captured on October 4, 2026; the video is git-ignored.
 
 To pin the repository: open your GitHub profile → Customize your pins → select
 `array-of-sunshine-support` → Save. The connected API does not support changing profile pins.

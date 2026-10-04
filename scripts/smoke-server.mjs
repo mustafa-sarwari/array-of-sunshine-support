@@ -18,7 +18,7 @@ try {
     await page.getByRole('button',{name:'+ Add entry'}).click();
     const question=`Browser test ${viewport.width} ${Date.now()}`;
     await page.getByLabel('Question',{exact:true}).fill(question);await page.getByLabel('Approved answer',{exact:true}).fill('This answer was saved through the real server.');await page.getByLabel('Keywords',{exact:true}).fill(question);
-    await page.getByRole('button',{name:'Save',exact:true}).click();await page.getByText('Entry added.',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Save',exact:true}).click();await page.getByText('Entry added.').waitFor();
     await page.reload();await page.getByText(question,{exact:true}).waitFor();
     await page.screenshot({path:`docs/screenshots/server-knowledge-${viewport.width}.png`,fullPage:true});
     await page.goto(base+'/demo/maple-street-bakery');await page.getByRole('button',{name:'Chat with Maple Street Bakery'}).click();
@@ -39,6 +39,8 @@ try {
     await context.close();console.log(`PASS real server browser flow ${viewport.width}px`);
   }
   {
+    // The server allows 120 API requests per minute per address; the flows above use most of that.
+    await new Promise(r=>setTimeout(r,61000));
     const context=await browser.newContext({viewport:{width:1366,height:900}});const page=await context.newPage();
     page.on('pageerror',e=>errors.push(e.message));
     await page.goto(base+'/owner/sign-in');await page.getByLabel('Email',{exact:true}).fill('owner@maplestreetbakery.demo');await page.getByLabel('Password',{exact:true}).fill(maplePassword);await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.getByRole('heading',{name:/Welcome back/}).waitFor();

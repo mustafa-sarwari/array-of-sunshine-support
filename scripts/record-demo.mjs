@@ -16,7 +16,7 @@ try {
  await page.goto(base+'/owner/knowledge');await page.getByRole('button',{name:'+ Add entry'}).click();
  const question='Do you offer office pastry boxes?';
  await page.getByLabel('Question',{exact:true}).fill(question);await page.getByLabel('Approved answer',{exact:true}).fill('Office pastry boxes are available by preorder with 48 hours notice.');await page.getByLabel('Keywords',{exact:true}).fill('office pastry boxes');await pause(10000);
- await page.getByRole('button',{name:'Save',exact:true}).click();await page.getByText('Entry added.',{exact:true}).waitFor();await pause(10000);
+ await page.getByRole('button',{name:'Save',exact:true}).click();await page.getByText('Entry added.').waitFor();await pause(10000);
  await page.goto(base+'/demo/maple-street-bakery');await page.getByRole('button',{name:'Chat with Maple Street Bakery'}).click();
  const dialog=page.getByRole('dialog',{name:/chat assistant/i});await dialog.getByLabel('Type your question').fill(question);await dialog.getByLabel('Type your question').press('Enter');await dialog.getByText(/48 hours notice/).waitFor();await pause(20000);
  await dialog.getByLabel('Type your question').fill('Do you offer keto cakes?');await dialog.getByLabel('Type your question').press('Enter');await dialog.getByRole('button',{name:'Yes, contact the team'}).click();await pause(10000);

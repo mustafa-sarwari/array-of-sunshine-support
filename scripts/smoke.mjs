@@ -1,6 +1,6 @@
 // End-to-end smoke test for the local demo and the standalone widget. Drives the
 // installed Microsoft Edge (or Chrome) against the running preview server. Usage:
-//   npm run build && npm run build:widget && npm run preview    (in one terminal)
+//   $env:VITE_BACKEND="local"; npm run build && npm run build:widget && npm run preview    (in one terminal)
 //   npm run smoke                                               (in another)
 // The standalone widget talks to a mocked chat endpoint; nothing reaches AWS.
 import { mkdirSync } from 'node:fs';
@@ -70,7 +70,7 @@ try {
   watch(page);
 
   await page.goto(`${BASE}/`);
-  await page.getByText('An AI support assistant that only answers').waitFor();
+  await page.getByText('A support assistant that answers from information the owner approved').waitFor();
   await page.screenshot({ path: `${SHOTS}/home-desktop.png` });
   step('home page renders');
   const demoBanner = () => page.getByRole('note').filter({ hasText: 'Demo — simulated sign-in, AI, and storage' });

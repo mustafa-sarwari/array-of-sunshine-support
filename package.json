@@ -21,6 +21,7 @@
     "test:server": "node --import tsx --test server/*.test.ts",
     "typecheck:server": "tsc -p server/tsconfig.json --noEmit",
     "smoke:server": "node scripts/smoke-server.mjs",
+    "smoke:accounts": "node scripts/smoke-accounts.mjs",
     "record:demo": "node scripts/record-demo.mjs"
   },
   "dependencies": {
