@@ -74,10 +74,13 @@ and membership record. Visitors must supply the random token for their own conve
 business's widget key or another visitor's token cannot read that conversation. Owner responses do
 not include visitor tokens. Browser storage is used only for the visitor's own chat reference/cache.
 
-The small single-process database stores application state as a JSON document in a SQLite table,
-with separate relational tables for users and sessions. Each state update is committed immediately.
-It is intentionally a simple local deployment; scaling to multiple workers would require a different
-store design. Node's built-in SQLite API may print an experimental warning.
+SQLite uses separate tables for users, sessions, recovery codes, businesses, memberships, FAQs,
+conversations, ordered messages, inquiries, and unanswered questions. Entity tables enforce foreign
+keys and include indexes for business access; optional entity fields remain in JSON payloads.
+The single-process server keeps an in-memory compatibility layer and commits transactional snapshot
+writes on each update. It does not yet perform targeted SQL updates, so scaling to multiple workers
+or large datasets would require a different storage design. Node's built-in SQLite API may print an
+experimental warning.
 
 ### Frontend and backend separately
 
@@ -112,6 +115,10 @@ below exercises the real local chat endpoint. No deployed AWS widget is claimed.
 ```powershell
 npm run check
 ```
+
+GitHub Actions runs this same command on **Windows and Linux with Node.js 24** for pushes to `main`
+and pull requests. See [Full-stack checks](https://github.com/mustafa-sarwari/array-of-sunshine-support/actions/workflows/check.yml).
+The workflow installs locked dependencies and runs local checks; it does not deploy or use AWS credentials.
 
 Runs frontend, server, and AWS scaffold type checks, unit tests, a real HTTP integration test,
 both builds, and a widget size check. The integration test verifies invalid credentials, protected
