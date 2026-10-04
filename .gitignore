@@ -48,3 +48,6 @@ data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+
+# Generated demo video: review before publishing separately.
+docs/videos/

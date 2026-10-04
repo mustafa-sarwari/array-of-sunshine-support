@@ -40,7 +40,12 @@ sample owner. Save those passwords locally; they are shown only once:
 - `owner@maplestreetbakery.demo`
 - `owner@harborbikes.demo`
 
-Use those credentials on the Owner sign-in page. There is no one-click authentication bypass.
+Use those credentials on the Owner sign-in page, or click **Create account** to register your own
+business with an email and a password of at least 12 characters. Registration gives you a private
+recovery code. Save it: **Recover account** uses that code instead of sending email. Recovery rotates
+the code and revokes all sessions. Settings → Account security lets you change your password and
+create a fresh recovery code. Existing sample owners can obtain a recovery code by changing their
+password after signing in. There is no one-click authentication bypass.
 Passwords are stored as salted scrypt hashes; session cookies are HttpOnly and SameSite=Strict,
 expire after eight hours, and are revoked at sign-out. Session tokens are hashed in SQLite.
 
@@ -152,3 +157,39 @@ The application is intended for local portfolio use. Public production use needs
 monitoring, retention controls for inquiries, privacy documentation, and a deployment/security review.
 Sample seed records are fictional. Existing screenshots show the earlier browser-only demo and are not
 proof that the new server mode passed browser tests. No AWS spending was authorized or performed.
+
+## Account and storage upgrade
+
+Businesses, memberships, FAQs, conversations, ordered messages, inquiries, and unanswered questions
+now have separate SQLite tables, foreign keys, and tenant indexes. Existing document-style SQLite
+data migrates on startup; the old document is removed only after a successful save. Entity payloads
+retain JSON fields. The server still uses an in-memory compatibility layer and transactional snapshot
+writes; it is a small single-process portfolio architecture, not a high-volume database service.
+
+Unexpected failures return a generic HTTP 500; validation failures return 400 and inaccessible records
+404. Structured error logs contain method, path, and error type, never request bodies, cookies,
+passwords, recovery codes, or customer messages. HTTPS, secure cookies, email verification, and a
+production recovery policy remain prerequisites before public hosting.
+
+## Capture the real server demo (Windows)
+
+After building, run `npm start` and keep that terminal open. In a second PowerShell:
+
+```powershell
+Set-Location "D:\AWS Project"
+$env:MAPLE_PASSWORD = Read-Host "Local Maple owner password"
+$env:HARBOR_PASSWORD = Read-Host "Local Harbor owner password"
+npm run smoke:server
+npm run record:demo
+Remove-Item Env:MAPLE_PASSWORD, Env:HARBOR_PASSWORD -ErrorAction SilentlyContinue
+```
+
+The smoke test writes `docs/screenshots/server-*.png` from real server mode. The recording writes
+`docs/videos/server-demo.webm`, a silent two-minute walkthrough. Both commands require Microsoft Edge.
+The recording adds a fictional FAQ and inquiry to your local data. Review captures before publishing;
+never record real customers or passwords. Existing screenshots without the `server-` prefix show the
+old simulated browser demo. Fresh captures have not been generated in the coding environment because
+its browser download is blocked. Do not present old images as proof of the real backend.
+
+To pin the repository: open your GitHub profile → Customize your pins → select
+`array-of-sunshine-support` → Save. The connected API does not support changing profile pins.
