@@ -210,7 +210,7 @@ export function createApp(options: { database?: string; testPasswords?: Record<s
       if(path.startsWith('/api/')) throw new HttpError(404,'Not found.');
       if(req.method!=='GET') throw new HttpError(405,'Method not allowed.');
       const root=resolve('dist');
-      const file=resolve(root,'.'+decodeURIComponent(path));
+      const file=resolve(root,'.'+decodeURIComponent(path).replace(/\\/g,'/'));
       if(file!==root && !file.startsWith(root+sep)) throw new HttpError(403,'Not allowed.');
       const asset=existsSync(file) && extname(file) ? file : resolve('dist/index.html');
       if(!existsSync(asset)) throw new HttpError(404,'Build the frontend first: npm run build');
