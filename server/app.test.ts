@@ -27,7 +27,7 @@ test('real HTTP authentication, tenant isolation, FAQ CRUD, chat handoff, persis
     assert.equal((await call('owner',{operation:'listKnowledge',args:[]},maple,'https://evil.example')).status,403);
     const owner=(operation:string,args:unknown[]=[],cookie=maple)=>call('owner',{operation,args},cookie);
     const knowledge=await owner('listKnowledge');assert.equal(knowledge.status,200);assert.ok(knowledge.data.every((k:{id:string})=>!k.id.includes('harbor')));
-    const denied=await owner('saveKnowledge',[{kind:'faq',question:'Hijack',answer:'Attempt to overwrite other tenant.',keywords:[],status:'approved'},'kb_harbor_tuneup']);assert.equal(denied.status,400);
+    const denied=await owner('saveKnowledge',[{kind:'faq',question:'Hijack',answer:'Attempt to overwrite other tenant.',keywords:[],status:'approved'},'kb_harbor_tuneup']);assert.equal(denied.status,404);
     const key='pk_demo_maple_7c1f2a';const visitor=(await call('chat',{action:'start',widgetKey:key})).data;
     assert.ok(visitor.visitorToken);
     assert.equal((await call('chat',{action:'transcript',widgetKey:key,...visitor,visitorToken:'wrong'})).status,404);

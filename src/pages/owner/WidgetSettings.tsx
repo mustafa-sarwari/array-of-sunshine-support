@@ -1,3 +1,4 @@
+import { PasswordSettings } from '../../backend/server/AccountForms';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useBackend } from '../../backend/context';
@@ -50,6 +51,7 @@ export default function WidgetSettings() {
 
   return (
     <>
+      {backend.mode === 'server' && <PasswordSettings />}
       <PageHeader
         title="Widget & profile"
         description="How the chat widget looks and greets visitors. Hours, prices, and policies belong in Approved answers so the assistant can use them."

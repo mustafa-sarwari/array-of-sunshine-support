@@ -18,9 +18,10 @@
     "dev:frontend": "vite",
     "dev:backend": "node --import tsx server/index.ts",
     "start": "node --import tsx server/index.ts",
-    "test:server": "node --import tsx --test server/app.test.ts",
+    "test:server": "node --import tsx --test server/*.test.ts",
     "typecheck:server": "tsc -p server/tsconfig.json --noEmit",
-    "smoke:server": "node scripts/smoke-server.mjs"
+    "smoke:server": "node scripts/smoke-server.mjs",
+    "record:demo": "node scripts/record-demo.mjs"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.15.7",
