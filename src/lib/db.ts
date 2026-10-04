@@ -45,11 +45,12 @@ export function getDb(): DemoDatabase {
 }
 
 export function updateDb(mutator: (draft: DemoDatabase) => void): DemoDatabase {
-  const draft = structuredClone(getDb());
+  const previous = getDb();
+  const draft = structuredClone(previous);
   mutator(draft);
   cache = draft;
   storage()?.setItem(STORAGE_KEY, JSON.stringify(draft));
-  emit();
+  try { emit(); } catch (error) { cache = previous; throw error; }
   return draft;
 }
 
