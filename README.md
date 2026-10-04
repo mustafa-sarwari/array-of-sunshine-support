@@ -8,6 +8,21 @@ on inquiries. Visitors use a chat widget that answers from approved information 
 The assistant uses deterministic FAQ matching, not a generative AI model. Real authentication and
 server-side persistence are implemented. This is a local portfolio application, not a production-hosted service.
 
+## Screenshots
+
+Captured in Microsoft Edge using the real Node.js API and SQLite backend with fictional sample data.
+
+**Customer chat: approved answers and human handoff**
+
+![Server-backed chat answering an approved FAQ and offering human handoff for an unknown question](docs/screenshots/server-widget-1366.png)
+
+<details>
+<summary><strong>Owner dashboard: managing approved answers</strong></summary>
+
+![Authenticated owner dashboard showing approved FAQs, drafts, editing controls, and answer preview](docs/screenshots/server-knowledge-1366.png)
+
+</details>
+
 ## Run on Windows PowerShell
 
 Requires **Node.js 24** and npm (SQLite is built into Node). No separate database installation.
