@@ -71,3 +71,30 @@ test('serves the frontend on every OS and blocks path traversal',async()=>{
     assert.equal((await fetch(base+'/..%5Cpackage.json')).status,403);
   } finally {await app.close();rmSync(folder,{recursive:true,force:true});}
 });
+
+
+test('hosted sessions use secure cookies and allow only the configured origin', async () => {
+  const origin = 'https://support.example';
+  const app = createApp({database: ':memory:', quiet: true, secureCookies: true, origins: [origin],
+    testPasswords: {'owner@maplestreetbakery.demo': 'Maple-test-password!'}});
+  await new Promise<void>(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${(app.server.address() as {port:number}).port}`;
+  const login = (requestOrigin: string) => fetch(base + '/api/auth/login', {
+    method: 'POST', headers: {'Content-Type': 'application/json', Origin: requestOrigin},
+    body: JSON.stringify({email: 'owner@maplestreetbakery.demo', password: 'Maple-test-password!'}),
+  });
+  try {
+    assert.equal((await login('https://evil.example')).status, 403);
+    const response = await login(origin);
+    assert.equal(response.status, 200);
+    const cookie = response.headers.get('set-cookie') ?? '';
+    assert.match(cookie, /; Secure(?:;|$)/);
+    assert.match(cookie, /HttpOnly/);
+    assert.match(cookie, /SameSite=Strict/);
+    const logout = await fetch(base + '/api/auth/logout', {method: 'POST',
+      headers: {Origin: origin, Cookie: cookie.split(';')[0], 'Content-Type': 'application/json'}, body: '{}'});
+    assert.equal(logout.status, 200);
+    assert.match(logout.headers.get('set-cookie') ?? '', /; Secure(?:;|$)/);
+    assert.match(logout.headers.get('set-cookie') ?? '', /Max-Age=0/);
+  } finally { await app.close(); }
+});

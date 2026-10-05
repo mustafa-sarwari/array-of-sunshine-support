@@ -20,6 +20,7 @@ export default function App() {
   const inDashboard = pathname.startsWith('/owner') && pathname !== '/owner/sign-in';
   return (
     <>
+      {import.meta.env.VITE_PUBLIC_DEMO === 'true' && <div role="note" style={{ padding: '12px 20px', background: '#fff3cd', color: '#493800', textAlign: 'center' }}>Portfolio demo · Use fictional details and a unique demo password. Accounts, conversations, and saved changes reset when this free service restarts or sleeps. The first visit may take about a minute.</div>}
       {mode === 'local' && !inDashboard && <DemoBanner />}
       <Routes>
         <Route path="/" element={<Home />} />

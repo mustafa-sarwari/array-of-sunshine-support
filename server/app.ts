@@ -16,7 +16,7 @@ const methods = new Set<keyof OwnerDataSource>(['getMyBusiness','updateBusinessP
 class HttpError extends Error { constructor(public status: number, message: string) { super(message); } }
 
 /** One process owns the SQLite state. Small local portfolio app, not a multi-worker datastore. */
-export function createApp(options: { database?: string; testPasswords?: Record<string,string>; origins?: string[]; quiet?: boolean } = {}) {
+export function createApp(options: { database?: string; testPasswords?: Record<string,string>; origins?: string[]; quiet?: boolean; secureCookies?: boolean; logSamplePasswords?: boolean } = {}) {
   const filename = options.database ?? resolve('data/support.sqlite');
   if (filename !== ':memory:') mkdirSync(dirname(filename), { recursive: true });
   const sql = new DatabaseSync(filename);
@@ -35,7 +35,7 @@ export function createApp(options: { database?: string; testPasswords?: Record<s
       const password = options.testPasswords?.[user.email] ?? randomBytes(18).toString('base64url');
       const salt = randomBytes(16).toString('hex');
       sql.prepare('INSERT INTO users VALUES(?,?,?,?,?)').run(user.id, user.email, user.displayName, salt, scryptSync(password,salt,64).toString('hex'));
-      if (!options.quiet) console.log(`Local sample account: ${user.email}\nPassword (save locally): ${password}`);
+      if (!options.quiet && options.logSamplePasswords !== false) console.log(`Local sample account: ${user.email}\nPassword (save locally): ${password}`);
       user.password = ''; // Never persist the sample seed's plaintext passwords.
     }
     for (const c of seed.conversations) c.visitorToken = randomBytes(24).toString('hex');
@@ -46,6 +46,7 @@ export function createApp(options: { database?: string; testPasswords?: Record<s
   sql.exec('DROP TABLE state'); // Migration committed before removing the old document.
   const unsubscribe = subscribeDb(persist);
   const origins = options.origins ?? ['http://localhost:5173','http://localhost:4173','http://localhost:3001','http://127.0.0.1:5173','http://127.0.0.1:4173','http://127.0.0.1:3001'];
+  const cookieFlags = `HttpOnly; SameSite=Strict; Path=/${options.secureCookies ? '; Secure' : ''}`;
   const hits = new Map<string,{count:number;expires:number}>();
   function limit(key: string, max: number) {
     const now=Date.now();
@@ -136,7 +137,7 @@ export function createApp(options: { database?: string; testPasswords?: Record<s
           sql.prepare('INSERT OR REPLACE INTO recovery VALUES(?,?)').run(user.id,digest(recoveryCode));
           sql.prepare('DELETE FROM sessions WHERE userId=?').run(user.id); sql.exec('COMMIT');
         } catch(e) {sql.exec('ROLLBACK');throw e;}
-        res.setHeader('Set-Cookie','aos_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+        res.setHeader('Set-Cookie',`aos_session=; ${cookieFlags}; Max-Age=0`);
         return json(res,200,{recoveryCode});
       }
       if(path==='/api/auth/login' && req.method==='POST') {
@@ -151,13 +152,13 @@ export function createApp(options: { database?: string; testPasswords?: Record<s
         const token=randomBytes(32).toString('base64url');
         sql.prepare('DELETE FROM sessions WHERE expires<=?').run(Date.now());
         sql.prepare('INSERT INTO sessions VALUES(?,?,?)').run(digest(token),u.id,Date.now()+8*3600000);
-        res.setHeader('Set-Cookie',`aos_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800`);
+        res.setHeader('Set-Cookie',`aos_session=${token}; ${cookieFlags}; Max-Age=28800`);
         return json(res,200,{id:u.id,email:u.email,displayName:u.displayName});
       }
       if(path==='/api/auth/logout' && req.method==='POST') {
         const token=/(?:^|;\s*)aos_session=([a-zA-Z0-9_-]+)/.exec(req.headers.cookie ?? '')?.[1] ?? '';
         sql.prepare('DELETE FROM sessions WHERE tokenHash=?').run(digest(token));
-        res.setHeader('Set-Cookie','aos_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+        res.setHeader('Set-Cookie',`aos_session=; ${cookieFlags}; Max-Age=0`);
         return json(res,200,{ok:true});
       }
       if(path==='/api/owner' && req.method==='POST') {

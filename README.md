@@ -114,7 +114,7 @@ npm start
 ```
 
 Open **http://localhost:3001/**. Node serves both the static frontend and its APIs.
-The service binds to loopback only. No public hosting is configured or required.
+The service binds to loopback by default. See [free demo hosting](docs/HOSTING.md) for the optional Render configuration. Hosting has not yet been verified.
 
 ### Embed the widget
 
@@ -198,8 +198,8 @@ writes; it is a small single-process portfolio architecture, not a high-volume d
 
 Unexpected failures return a generic HTTP 500; validation failures return 400 and inaccessible records
 404. Structured error logs contain method, path, and error type, never request bodies, cookies,
-passwords, recovery codes, or customer messages. HTTPS, secure cookies, email verification, and a
-production recovery policy remain prerequisites before public hosting.
+passwords, recovery codes, or customer messages. Hosted mode enables Secure cookies and requires explicit HTTPS origins. Email verification and a
+production recovery policy remain prerequisites for real customer use.
 
 ## Capture the real server demo (Windows)
 
