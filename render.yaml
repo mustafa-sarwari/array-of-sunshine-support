@@ -1,0 +1,24 @@
+# Free, single-process portfolio demo. SQLite resets on restart/sleep/redeploy.
+services:
+  - type: web
+    name: sunshine-support-demo
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev --include=optional --no-audit --no-fund && npm run build && npm run build:widget
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: SECURE_COOKIES
+        value: "true"
+      - key: VITE_BACKEND
+        value: server
+      - key: VITE_PUBLIC_DEMO
+        value: "true"
+      - key: DATABASE_PATH
+        value: /tmp/sunshine-support.sqlite
