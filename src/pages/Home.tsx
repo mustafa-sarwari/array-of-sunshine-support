@@ -6,6 +6,7 @@ export default function Home() {
   const backend = useBackend();
   const businesses = backend.useDemoBusinesses();
   const local = backend.mode === 'local';
+  const publicDemo = import.meta.env.VITE_PUBLIC_DEMO === 'true';
 
   return (
     <div className="min-h-dvh bg-gradient-to-b from-amber-50 via-white to-white">
@@ -85,11 +86,10 @@ export default function Home() {
                 and ask &ldquo;Are you open on Sunday?&rdquo; in the chat bubble.
               </li>
               <li>Ask something it doesn&apos;t know, like &ldquo;Do you have keto cupcakes?&rdquo;, then send a request to the team.</li>
-              <li>
-                In another tab, sign in as the bakery owner. The question shows up under <em>Unanswered</em> and the request under{' '}
-                <em>Inquiries</em>.
-              </li>
-              <li>Turn the unanswered question into an approved answer and ask the widget again.</li>
+              {publicDemo ? <li>To try owner tools, open Owner dashboard and choose Create account for your own fictional business. Sample owner accounts are not shared publicly.</li> : <>
+                <li>In another tab, sign in as the bakery owner. The question shows up under <em>Unanswered</em> and the request under <em>Inquiries</em>.</li>
+                <li>Turn the unanswered question into an approved answer and ask the widget again.</li>
+              </>}
             </ol>
           </div>
           <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
@@ -99,7 +99,7 @@ export default function Home() {
                 Ask the bakery widget &ldquo;How much is a tune-up?&rdquo;. It offers a handoff because that answer belongs to Harbor Bike
                 Repair.
               </li>
-              <li>Sign in as each owner. Each dashboard only shows its own business&apos;s answers, chats, and inquiries.</li>
+              <li>{publicDemo ? 'Your registered owner account only sees its own business data. The public sample businesses belong to separate owners.' : 'Sign in as each owner. Each dashboard only shows its own business’s answers, chats, and inquiries.'}</li>
               <li>Draft entries (like the bakery&apos;s holiday pies) are never used by the widget until approved.</li>
             </ul>
             {backend.resetDemoData && (
