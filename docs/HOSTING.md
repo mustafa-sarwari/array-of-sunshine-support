@@ -1,6 +1,8 @@
 # Free Render demo
 
-Deployment configuration is prepared; no live deployment has been verified yet.
+Live demo: https://sunshine-support-demo.onrender.com/
+
+On October 5, 2026, Render reported a successful deployment and the hosted visitor widget returned its approved Sunday-hours answer. Windows and Linux CI passed types, tests and builds. Owner authentication is covered by HTTP tests; a hosted owner-account walkthrough has not yet been performed.
 
 1. Create a Render Blueprint from this public repository, using `render.yaml` on `main`.
 2. Confirm the service uses the **Free** plan. Do not add paid storage or databases.

@@ -6,7 +6,9 @@ on inquiries. Visitors use a chat widget that answers from approved information 
 
 **The default app runs on your own computer without paid services, AWS credentials, or model calls.**
 The assistant uses deterministic FAQ matching, not a generative AI model. Real authentication and
-server-side persistence are implemented. This is a local portfolio application, not a production-hosted service.
+server-side persistence are implemented. This is a portfolio application with an optional temporary hosted demo, not a production customer service.
+
+[Open the live full-stack demo](https://sunshine-support-demo.onrender.com/) — real Node.js API and SQLite, with temporary demo storage. Free hosting can take about a minute to wake and resets data when it sleeps or restarts. Use fictional information. See [hosting notes](docs/HOSTING.md).
 
 ## Local demo
 
@@ -114,7 +116,7 @@ npm start
 ```
 
 Open **http://localhost:3001/**. Node serves both the static frontend and its APIs.
-The service binds to loopback by default. See [free demo hosting](docs/HOSTING.md) for the optional Render configuration. Hosting has not yet been verified.
+The service binds to loopback by default. See [free demo hosting](docs/HOSTING.md) for the optional Render configuration. The hosted homepage and server-backed visitor FAQ flow were verified on October 5, 2026.
 
 ### Embed the widget
 
